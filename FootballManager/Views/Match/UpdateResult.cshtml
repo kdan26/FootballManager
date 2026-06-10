@@ -1,0 +1,61 @@
+@model FootballManager.ViewModels.MatchResultViewModel
+@{
+    ViewData["Title"] = "Cập nhật kết quả";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-trophy me-2"></i>Cập nhật kết quả trận đấu
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <span class="fw-bold fs-5">@Model.HomeTeamName</span>
+                    <span class="mx-3 text-muted">vs</span>
+                    <span class="fw-bold fs-5">@Model.AwayTeamName</span>
+                </div>
+
+                <form asp-action="UpdateResult" asp-route-id="@Model.MatchId" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="MatchId" />
+                    <input type="hidden" asp-for="HomeTeamName" />
+                    <input type="hidden" asp-for="AwayTeamName" />
+
+                    <div asp-validation-summary="All" class="alert alert-danger py-2"
+                         style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <label asp-for="HomeScore" class="form-label fw-semibold text-center d-block">
+                                @Model.HomeTeamName
+                            </label>
+                            <input asp-for="HomeScore" type="number" min="0" class="form-control form-control-lg text-center" />
+                            <span asp-validation-for="HomeScore" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6">
+                            <label asp-for="AwayScore" class="form-label fw-semibold text-center d-block">
+                                @Model.AwayTeamName
+                            </label>
+                            <input asp-for="AwayScore" type="number" min="0" class="form-control form-control-lg text-center" />
+                            <span asp-validation-for="AwayScore" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle me-1"></i>Xác nhận kết quả
+                        </button>
+                    </div>
+                    <div class="text-center mt-2">
+                        <a asp-action="Details" asp-route-id="@Model.MatchId" class="text-muted small">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

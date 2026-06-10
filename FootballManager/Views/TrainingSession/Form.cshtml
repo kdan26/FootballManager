@@ -1,0 +1,169 @@
+@model FootballManager.ViewModels.TrainingSessionFormViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = Model.Id > 0 ? "Chỉnh sửa buổi tập" : "Thêm buổi tập mới";
+    bool isEdit = Model.Id > 0;
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-journal-plus me-2 text-success"></i>
+        @(isEdit ? "Chỉnh sửa buổi tập" : "Thêm buổi tập mới")
+    </span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <form asp-action="Save" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2"
+                 style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+            @* Thông tin cơ bản *@
+            <div class="card mb-4">
+                <div class="card-header fw-semibold bg-success text-white">
+                    <i class="bi bi-info-circle me-2"></i>Thông tin buổi tập
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="TeamId" class="form-label fw-semibold"></label>
+                            <select asp-for="TeamId" asp-items="Model.Teams" class="form-select">
+                                <option value="">-- Chọn đội --</option>
+                            </select>
+                            <span asp-validation-for="TeamId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Title" class="form-label fw-semibold"></label>
+                            <input asp-for="Title" class="form-control"
+                                   placeholder="VD: Tập pressing, Buổi phục hồi..." />
+                            <span asp-validation-for="Title" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="ScheduledAt" class="form-label fw-semibold"></label>
+                            <input asp-for="ScheduledAt" type="datetime-local" class="form-control"
+                                   value="@Model.ScheduledAt.ToString("yyyy-MM-ddTHH:mm")" />
+                            <span asp-validation-for="ScheduledAt" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Location" class="form-label fw-semibold"></label>
+                            <input asp-for="Location" class="form-control" placeholder="Sân tập A, Nhà thi đấu..." />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="CoachNotes" class="form-label fw-semibold"></label>
+                        <textarea asp-for="CoachNotes" class="form-control" rows="3"
+                                  placeholder="Mục tiêu buổi tập, lưu ý đặc biệt..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            @* Chọn bài tập *@
+            <div class="card mb-4">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-collection-play me-2 text-success"></i>Bài tập trong buổi
+                    <span class="text-muted fw-normal small ms-1">(tuỳ chọn)</span>
+                </div>
+                <div class="card-body">
+                    @* Lọc theo loại *@
+                    <div class="mb-3 d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary filter-btn active" data-cat="">Tất cả</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger   filter-btn" data-cat="Physical">💪 Thể lực</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary  filter-btn" data-cat="Technical">⚽ Kỹ thuật</button>
+                        <button type="button" class="btn btn-sm btn-outline-warning  filter-btn" data-cat="Tactical">🧠 Chiến thuật</button>
+                    </div>
+
+                    <div class="row g-2" id="drillList">
+                        @foreach (var d in Model.AvailableDrills)
+                        {
+                            bool isSelected = Model.SelectedDrillIds.Contains(d.Id);
+                            string catStr = d.Category.ToString();
+                            string badge = d.Category switch
+                            {
+                                TrainingCategory.Physical  => "bg-danger",
+                                TrainingCategory.Technical => "bg-primary",
+                                TrainingCategory.Tactical  => "bg-warning text-dark",
+                                _ => "bg-secondary"
+                            };
+                            <div class="col-md-6 drill-item" data-cat="@catStr">
+                                <label class="card p-2 d-flex align-items-center gap-2 cursor-pointer
+                                              @(isSelected ? "border-success bg-success bg-opacity-10" : "")
+                                              drill-card" style="cursor:pointer">
+                                    <input type="checkbox" name="SelectedDrillIds" value="@d.Id"
+                                           class="form-check-input mt-0 flex-shrink-0"
+                                           @(isSelected ? "checked" : "") />
+                                    <div>
+                                        <div class="fw-semibold small">@d.Name</div>
+                                        <div class="d-flex gap-2 mt-1">
+                                            <span class="badge @badge" style="font-size:0.65rem">
+                                                @(d.Category switch {
+                                                    TrainingCategory.Physical  => "Thể lực",
+                                                    TrainingCategory.Technical => "Kỹ thuật",
+                                                    _ => "Chiến thuật"
+                                                })
+                                            </span>
+                                            @if (d.DurationMinutes.HasValue)
+                                            {
+                                                <span class="text-muted" style="font-size:0.75rem">
+                                                    <i class="bi bi-clock me-1"></i>@d.DurationMinutes phút
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        }
+                    </div>
+
+                    @if (!Model.AvailableDrills.Any())
+                    {
+                        <p class="text-muted small">
+                            Chưa có bài tập nào.
+                            <a asp-controller="Drill" asp-action="Create">Tạo bài tập mới</a>
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-save me-1"></i>@(isEdit ? "Cập nhật" : "Tạo buổi tập")
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        // Highlight card khi check
+        document.querySelectorAll('.drill-card input[type=checkbox]').forEach(cb => {
+            cb.addEventListener('change', function () {
+                this.closest('.drill-card').classList.toggle('border-success', this.checked);
+                this.closest('.drill-card').classList.toggle('bg-success',    this.checked);
+                this.closest('.drill-card').classList.toggle('bg-opacity-10', this.checked);
+            });
+        });
+
+        // Lọc theo loại
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const cat = this.dataset.cat;
+                document.querySelectorAll('.drill-item').forEach(item => {
+                    item.style.display = (!cat || item.dataset.cat === cat) ? '' : 'none';
+                });
+            });
+        });
+    </script>
+}

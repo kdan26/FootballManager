@@ -1,0 +1,225 @@
+@model FootballManager.ViewModels.TrainingAttendanceViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Điểm danh — " + Model.SessionTitle;
+    bool canEdit = User.IsInRole("Admin") || User.IsInRole("Coach");
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a asp-controller="TrainingSession" asp-action="Details" asp-route-id="@Model.SessionId"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-clipboard-check me-2 text-success"></i>Điểm danh — @Model.SessionTitle
+    </span>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* Thông tin buổi tập *@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="text-muted small">Đội</div>
+                <div class="fw-semibold">@Model.TeamName</div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-muted small">Thời gian</div>
+                <div class="fw-semibold">@Model.ScheduledAt.ToString("HH:mm — dd/MM/yyyy")</div>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Location))
+            {
+                <div class="col-md-4">
+                    <div class="text-muted small">Địa điểm</div>
+                    <div class="fw-semibold">@Model.Location</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* Thống kê nhanh *@
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-2">
+        <div class="card text-center border-0 bg-success bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-success">@Model.PresentCount</div>
+                <div class="small text-muted">Có mặt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="card text-center border-0 bg-warning bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-warning">@Model.LateCount</div>
+                <div class="small text-muted">Đến muộn</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="card text-center border-0 bg-danger bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-danger">@Model.AbsentCount</div>
+                <div class="small text-muted">Vắng mặt</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="card text-center border-0 bg-info bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-info">@Model.ExcusedCount</div>
+                <div class="small text-muted">Xin phép</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-2">
+        <div class="card text-center border-0 bg-secondary bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="fs-4 fw-bold text-secondary">@Model.InjuredCount</div>
+                <div class="small text-muted">Chấn thương</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Bảng điểm danh *@
+<div class="card">
+    <div class="card-header fw-semibold">
+        <i class="bi bi-people-fill me-2"></i>Danh sách cầu thủ (@Model.Players.Count người)
+    </div>
+    <div class="card-body p-0">
+        @if (canEdit)
+        {
+            <form asp-controller="Calendar" asp-action="SaveAttendance" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="SessionId" value="@Model.SessionId" />
+                <input type="hidden" name="TeamId"    value="@Model.TeamId" />
+
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:40px">#</th>
+                                <th>Cầu thủ</th>
+                                <th style="width:120px">Vị trí</th>
+                                <th style="width:180px">Trạng thái</th>
+                                <th style="width:100px">Muộn (ph)</th>
+                                <th>Ghi chú</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Players.Count; i++)
+                            {
+                                var p = Model.Players[i];
+                                <tr>
+                                    <td class="text-muted small align-middle">
+                                        @(p.JerseyNumber?.ToString() ?? "—")
+                                        <input type="hidden" name="Players[@i].PlayerId" value="@p.PlayerId" />
+                                        <input type="hidden" name="Players[@i].FullName"  value="@p.FullName" />
+                                        <input type="hidden" name="Players[@i].JerseyNumber" value="@p.JerseyNumber" />
+                                    </td>
+                                    <td class="fw-semibold align-middle">@p.FullName</td>
+                                    <td class="align-middle">
+                                        <span class="badge bg-secondary">@p.PositionLabel</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <select name="Players[@i].Status" class="form-select form-select-sm status-select"
+                                                data-row="@i">
+                                            <option value="Present" selected="@(p.Status == TrainingAttendanceStatus.Present ? "selected" : null)">✅ Có mặt</option>
+                                            <option value="Late"    selected="@(p.Status == TrainingAttendanceStatus.Late    ? "selected" : null)">⏰ Đến muộn</option>
+                                            <option value="Absent"  selected="@(p.Status == TrainingAttendanceStatus.Absent  ? "selected" : null)">❌ Vắng mặt</option>
+                                            <option value="Excused" selected="@(p.Status == TrainingAttendanceStatus.Excused ? "selected" : null)">📋 Xin phép</option>
+                                            <option value="Injured" selected="@(p.Status == TrainingAttendanceStatus.Injured ? "selected" : null)">🤕 Chấn thương</option>
+                                        </select>
+                                    </td>
+                                    <td class="align-middle">
+                                        <input type="number" name="Players[@i].LateMinutes"
+                                               value="@p.LateMinutes" min="1" max="120"
+                                               class="form-control form-control-sm late-input"
+                                               id="late_@i"
+                                               style="display:@(p.Status == TrainingAttendanceStatus.Late ? "block" : "none")" />
+                                    </td>
+                                    <td class="align-middle">
+                                        <input type="text" name="Players[@i].Note"
+                                               value="@p.Note" class="form-control form-control-sm"
+                                               placeholder="Ghi chú..." />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-3 border-top">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save me-1"></i>Lưu điểm danh
+                    </button>
+                </div>
+            </form>
+        }
+        else
+        {
+            @* Chỉ xem *@
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th><th>Cầu thủ</th><th>Vị trí</th><th>Trạng thái</th><th>Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Players)
+                        {
+                            string badge = p.Status switch
+                            {
+                                TrainingAttendanceStatus.Present  => "bg-success",
+                                TrainingAttendanceStatus.Late     => "bg-warning text-dark",
+                                TrainingAttendanceStatus.Absent   => "bg-danger",
+                                TrainingAttendanceStatus.Excused  => "bg-info text-dark",
+                                TrainingAttendanceStatus.Injured  => "bg-secondary",
+                                _ => "bg-light"
+                            };
+                            string label = p.Status switch
+                            {
+                                TrainingAttendanceStatus.Present  => "Có mặt",
+                                TrainingAttendanceStatus.Late     => $"Muộn {p.LateMinutes} phút",
+                                TrainingAttendanceStatus.Absent   => "Vắng mặt",
+                                TrainingAttendanceStatus.Excused  => "Xin phép",
+                                TrainingAttendanceStatus.Injured  => "Chấn thương",
+                                _ => ""
+                            };
+                            <tr>
+                                <td>@(p.JerseyNumber?.ToString() ?? "—")</td>
+                                <td class="fw-semibold">@p.FullName</td>
+                                <td><span class="badge bg-secondary">@p.PositionLabel</span></td>
+                                <td><span class="badge @badge">@label</span></td>
+                                <td class="text-muted small">@p.Note</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Hiện/ẩn ô muộn phút khi chọn "Đến muộn"
+    document.querySelectorAll('.status-select').forEach(sel => {
+        sel.addEventListener('change', function () {
+            const row  = this.dataset.row;
+            const late = document.getElementById('late_' + row);
+            if (late) late.style.display = this.value === 'Late' ? 'block' : 'none';
+        });
+    });
+</script>
+}

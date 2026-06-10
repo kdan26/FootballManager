@@ -1,0 +1,322 @@
+@model FootballManager.ViewModels.PlayerMatchStatsFormViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Nhập chỉ số thi đấu";
+    bool isGK = Model.Position == PlayerPosition.GoalKeeper;
+    bool isFB = Model.Position == PlayerPosition.FullBack;
+    bool isCB = Model.Position == PlayerPosition.CenterBack;
+    bool isDM = Model.Position == PlayerPosition.DefensiveMid;
+    bool isCM = Model.Position == PlayerPosition.CentralMid;
+    bool isAM = Model.Position == PlayerPosition.AttackingMid || Model.Position == PlayerPosition.Winger;
+    bool isST = Model.Position == PlayerPosition.Striker;
+
+    string posLabel = Model.Position switch {
+        PlayerPosition.GoalKeeper   => "Thủ môn",
+        PlayerPosition.CenterBack   => "Trung vệ",
+        PlayerPosition.FullBack     => "Hậu vệ biên",
+        PlayerPosition.DefensiveMid => "Tiền vệ phòng ngự",
+        PlayerPosition.CentralMid   => "Tiền vệ trung tâm",
+        PlayerPosition.AttackingMid => "Tiền vệ công",
+        PlayerPosition.Winger       => "Chạy cánh",
+        PlayerPosition.Striker      => "Tiền đạo",
+        _ => Model.Position.ToString()
+    };
+    bool hasMatch = Model.MatchId > 0;
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a asp-action="Index" asp-route-playerId="@Model.PlayerId" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-clipboard-data me-2 text-primary"></i>Chỉ số thi đấu — @Model.PlayerName
+    </span>
+    <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1">@posLabel</span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+
+        @* Bước 1: Chọn trận (GET form riêng) *@
+        <div class="card mb-3">
+            <div class="card-body py-3">
+                <form method="get" asp-action="MatchStats" class="row g-2 align-items-end">
+                    <input type="hidden" name="playerId" value="@Model.PlayerId" />
+                    <div class="col">
+                        <label class="form-label fw-semibold mb-1">
+                            <i class="bi bi-calendar3 me-1"></i>Chọn trận đấu
+                        </label>
+                        @{
+                            // Đánh dấu selected cho item hiện tại
+                            foreach (var item in Model.Matches)
+                            {
+                                item.Selected = item.Value == Model.MatchId.ToString();
+                            }
+                        }
+                        <select name="matchId" class="form-select" id="matchSelect"
+                                asp-items="Model.Matches">
+                            <option value="">-- Chọn trận để nhập / chỉnh sửa --</option>
+                        </select>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Tải dữ liệu
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (!hasMatch)
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>Chọn trận đấu ở trên để bắt đầu nhập chỉ số.
+            </div>
+        }
+        else
+        {
+
+        @* Bước 2: Form nhập chỉ số *@
+        <div class="card">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-pencil-square me-2"></i>@Model.MatchLabel</span>
+                <span class="badge bg-white text-primary">@posLabel</span>
+            </div>
+            <div class="card-body">
+                <form asp-action="MatchStats" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="PlayerId" />
+                    <input type="hidden" asp-for="MatchId" />
+                    <input type="hidden" asp-for="Position" />
+                    <input type="hidden" asp-for="PlayerName" />
+                    <input type="hidden" asp-for="MatchLabel" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 mb-3"
+                         style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+                    @* ── Chỉ số chung ── *@
+                    <h6 class="text-muted border-bottom pb-1 mb-3">
+                        <i class="bi bi-grid me-1"></i>Chỉ số chung
+                    </h6>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label asp-for="MinutesPlayed" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <input asp-for="MinutesPlayed" type="number" min="0" max="120" class="form-control" />
+                                <span class="input-group-text">phút</span>
+                            </div>
+                            <span asp-validation-for="MinutesPlayed" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="PassCompletionPct" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <input asp-for="PassCompletionPct" type="number" step="0.1" min="0" max="100" class="form-control" placeholder="0–100" />
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <span asp-validation-for="PassCompletionPct" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    @* ── Thủ môn ── *@
+                    @if (isGK)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-shield-fill me-1 text-warning"></i>Thủ môn (Goalkeeper)
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="PsxGDiff" class="form-label fw-semibold"></label>
+                                <input asp-for="PsxGDiff" type="number" step="0.01" class="form-control" placeholder="VD: +0.5" />
+                                <div class="form-text">Dương = xuất sắc hơn trung bình</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="SavePct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="SavePct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="LaunchAccuracyPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="LaunchAccuracyPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Hậu vệ biên ── *@
+                    @if (isFB)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-arrow-left-right me-1 text-info"></i>Hậu vệ biên (Full-back)
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="AccurateCrosses" class="form-label fw-semibold"></label>
+                                <input asp-for="AccurateCrosses" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="TacklesWonPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="TacklesWonPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="DistanceCovered" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="DistanceCovered" type="number" step="0.1" min="0" class="form-control" />
+                                    <span class="input-group-text">km</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Trung vệ ── *@
+                    @if (isCB)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-shield-check me-1 text-success"></i>Trung vệ (Center-back)
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <label asp-for="AerialDuelsPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="AerialDuelsPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="Clearances" class="form-label fw-semibold"></label>
+                                <input asp-for="Clearances" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="Interceptions" class="form-label fw-semibold"></label>
+                                <input asp-for="Interceptions" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="LongPassPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="LongPassPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Tiền vệ phòng ngự / trung tâm ── *@
+                    @if (isDM || isCM)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-arrows-move me-1 text-secondary"></i>Tiền vệ trung tâm / Phòng ngự
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="BallRecoveries" class="form-label fw-semibold"></label>
+                                <input asp-for="BallRecoveries" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="PressuredPassPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="PressuredPassPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Tiền vệ công / cánh ── *@
+                    @if (isAM)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-lightning-fill me-1 text-warning"></i>Tiền vệ công / Chạy cánh
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <label asp-for="KeyPasses" class="form-label fw-semibold"></label>
+                                <input asp-for="KeyPasses" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="ShotCreatingActions" class="form-label fw-semibold"></label>
+                                <input asp-for="ShotCreatingActions" type="number" min="0" class="form-control" />
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="SuccessfulDribblesPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="SuccessfulDribblesPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="TouchesInPenaltyArea" class="form-label fw-semibold"></label>
+                                <input asp-for="TouchesInPenaltyArea" type="number" min="0" class="form-control" />
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Tiền đạo ── *@
+                    @if (isST)
+                    {
+                        <h6 class="text-muted border-bottom pb-1 mb-3">
+                            <i class="bi bi-bullseye me-1 text-danger"></i>Tiền đạo (Striker)
+                        </h6>
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label asp-for="ShotsPer90" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="ShotsPer90" type="number" step="0.1" min="0" class="form-control" />
+                                    <span class="input-group-text">/90'</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="ShotsOnTargetPct" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="ShotsOnTargetPct" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="ConversionRate" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="ConversionRate" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @* ── Ghi chú ── *@
+                    <h6 class="text-muted border-bottom pb-1 mb-3">
+                        <i class="bi bi-chat-left-text me-1"></i>Ghi chú
+                    </h6>
+                    <div class="mb-4">
+                        <textarea asp-for="Notes" class="form-control" rows="2"
+                                  placeholder="Nhận xét thêm về hiệu suất trận này..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Lưu chỉ số
+                        </button>
+                        <a asp-action="Index" asp-route-playerId="@Model.PlayerId"
+                           class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        } @* end if hasMatch *@
+
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        // Tự động submit GET form khi đổi trận
+        document.getElementById('matchSelect').addEventListener('change', function () {
+            if (this.value) this.closest('form').submit();
+        });
+    </script>
+}

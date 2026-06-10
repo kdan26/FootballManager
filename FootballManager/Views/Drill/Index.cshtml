@@ -1,0 +1,142 @@
+@model List<FootballManager.ViewModels.DrillListItem>
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Thư viện bài tập";
+    string? cat = ViewBag.Category as string;
+    string? search = ViewBag.Search as string;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-collection-play me-2 text-success"></i>Thư viện bài tập
+    </span>
+    @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+    {
+        <a asp-action="Create" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Thêm bài tập
+        </a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* Bộ lọc *@
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold mb-1">Loại bài tập</label>
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- Tất cả --</option>
+                    <option value="Physical"  selected="@(cat == "Physical"  ? "selected" : null)">💪 Thể lực</option>
+                    <option value="Technical" selected="@(cat == "Technical" ? "selected" : null)">⚽ Kỹ thuật</option>
+                    <option value="Tactical"  selected="@(cat == "Tactical"  ? "selected" : null)">🧠 Chiến thuật</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold mb-1">Tìm kiếm</label>
+                <input name="search" value="@search" class="form-control form-control-sm"
+                       placeholder="Nhập tên bài tập..." />
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-search me-1"></i>Tìm
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Danh sách *@
+@if (!Model.Any())
+{
+    <div class="alert alert-light border text-center py-5">
+        <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+        <span class="text-muted">Chưa có bài tập nào. Hãy tạo bài tập đầu tiên!</span>
+    </div>
+}
+else
+{
+    @* Nhóm theo loại *@
+    foreach (var group in Model.GroupBy(d => d.Category).OrderBy(g => g.Key))
+    {
+        string headerColor = group.Key switch
+        {
+            TrainingCategory.Physical  => "bg-danger",
+            TrainingCategory.Technical => "bg-primary",
+            TrainingCategory.Tactical  => "bg-warning text-dark",
+            _ => "bg-secondary"
+        };
+        string icon = group.Key switch
+        {
+            TrainingCategory.Physical  => "bi-heart-pulse",
+            TrainingCategory.Technical => "bi-dribbble",
+            TrainingCategory.Tactical  => "bi-diagram-3",
+            _ => "bi-collection"
+        };
+
+        <div class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge @headerColor fs-6 px-3 py-2">
+                    <i class="bi @icon me-2"></i>@group.First().CategoryLabel
+                </span>
+                <span class="text-muted small">@group.Count() bài tập</span>
+            </div>
+
+            <div class="row g-3">
+                @foreach (var drill in group)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0 fw-semibold">@drill.Name</h6>
+                                    @if (drill.IsShared)
+                                    {
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle small">
+                                            <i class="bi bi-share me-1"></i>Chia sẻ
+                                        </span>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrEmpty(drill.TargetSkill))
+                                {
+                                    <p class="text-muted small mb-2">@drill.TargetSkill</p>
+                                }
+
+                                <div class="d-flex gap-3 small text-muted mb-3">
+                                    @if (drill.DurationMinutes.HasValue)
+                                    {
+                                        <span><i class="bi bi-clock me-1"></i>@drill.DurationMinutes phút</span>
+                                    }
+                                    <span title="Độ khó">@drill.DifficultyLabel</span>
+                                    <span><i class="bi bi-repeat me-1"></i>@drill.UsageCount lần dùng</span>
+                                </div>
+
+                                <div class="d-flex gap-2">
+                                    <a asp-action="Details" asp-route-id="@drill.Id"
+                                       class="btn btn-outline-secondary btn-sm flex-grow-1">
+                                        <i class="bi bi-eye me-1"></i>Xem
+                                    </a>
+                                    @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@drill.Id"
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

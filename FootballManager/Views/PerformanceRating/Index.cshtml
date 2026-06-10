@@ -1,0 +1,380 @@
+@using FootballManager.ViewModels
+@using System.Text.Json
+@model PerformanceRatingIndexViewModel
+
+@{
+    ViewData["Title"] = "Phong độ — " + Model.PlayerName;
+    var jsOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    string chartLabels    = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.Label), jsOpts);
+    string overallData    = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.OverallRating), jsOpts);
+    string attitudeData   = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.AttitudeRating), jsOpts);
+    string fitnessData    = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.FitnessRating), jsOpts);
+    string technicalData  = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.TechnicalRating), jsOpts);
+    string tacticalData   = JsonSerializer.Serialize(Model.ChartPoints.Select(p => p.TacticalRating), jsOpts);
+}
+
+@* ── Header ── *@
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a asp-controller="PlayerStats" asp-action="Index" asp-route-playerId="@Model.PlayerId"
+           class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <span class="fs-5 fw-semibold">
+            <i class="bi bi-star-fill me-2 text-warning"></i>Phong độ — @Model.PlayerName
+        </span>
+    </div>
+    @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+    {
+        <a asp-action="Create" asp-route-playerId="@Model.PlayerId"
+           class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Thêm đánh giá
+        </a>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* ── Thông tin cầu thủ + thống kê nhanh ── *@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                     style="width:56px;height:56px;font-size:1.3rem">
+                    @(Model.JerseyNumber?.ToString() ?? "?")
+                </div>
+            </div>
+            <div class="col">
+                <h5 class="mb-0">@Model.PlayerName</h5>
+                <span class="text-muted small">@Model.PositionLabel — @Model.TeamName</span>
+            </div>
+
+            @* Trend *@
+            @if (Model.Trend.HasValue)
+            {
+                <div class="col-auto text-center">
+                    <i class="bi @Model.TrendIcon fs-3 @Model.TrendClass"></i>
+                    <div class="small @Model.TrendClass fw-semibold">
+                        @Model.TrendLabel
+                        (@(Model.Trend > 0 ? "+" : "")@Model.Trend?.ToString("0.#"))
+                    </div>
+                    <div class="text-muted" style="font-size:0.7rem">Xu hướng gần đây</div>
+                </div>
+            }
+
+            @* Avg Overall *@
+            @if (Model.AvgOverall.HasValue)
+            {
+                <div class="col-auto text-center">
+                    <div class="fw-bold fs-3 text-success">@Model.AvgOverall?.ToString("0.#")</div>
+                    <div class="text-muted" style="font-size:0.72rem">TB tổng thể / 10</div>
+                </div>
+            }
+
+            @* Mini stats *@
+            <div class="col-auto">
+                <div class="row g-2 text-center">
+                    @if (Model.AvgAttitude.HasValue)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="fw-semibold text-primary">@Model.AvgAttitude?.ToString("0.#")</div>
+                            <div class="text-muted" style="font-size:0.7rem">Thái độ</div>
+                        </div>
+                    }
+                    @if (Model.AvgFitness.HasValue)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="fw-semibold text-danger">@Model.AvgFitness?.ToString("0.#")</div>
+                            <div class="text-muted" style="font-size:0.7rem">Thể lực</div>
+                        </div>
+                    }
+                    @if (Model.AvgTechnical.HasValue)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="fw-semibold text-info">@Model.AvgTechnical?.ToString("0.#")</div>
+                            <div class="text-muted" style="font-size:0.7rem">Kỹ thuật</div>
+                        </div>
+                    }
+                    @if (Model.AvgTactical.HasValue)
+                    {
+                        <div class="col-6 col-md-3">
+                            <div class="fw-semibold text-warning">@Model.AvgTactical?.ToString("0.#")</div>
+                            <div class="text-muted" style="font-size:0.7rem">Chiến thuật</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ── Biểu đồ phong độ ── *@
+@if (Model.ChartPoints.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-graph-up me-2 text-success"></i>Biểu đồ phong độ
+            <span class="badge bg-secondary ms-2">@Model.ChartPoints.Count điểm</span>
+        </div>
+        <div class="card-body">
+            <canvas id="ratingChart" height="90"></canvas>
+        </div>
+    </div>
+}
+
+@* ── Danh sách đánh giá ── *@
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-check me-2"></i>Lịch sử đánh giá</span>
+        <span class="badge bg-secondary">@Model.TotalRatings lần</span>
+    </div>
+    <div class="card-body p-0">
+        @if (!Model.Ratings.Any())
+        {
+            <p class="text-muted p-3 mb-0">Chưa có đánh giá nào. HLV hãy thêm đánh giá đầu tiên.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Ngày</th>
+                            <th>Loại</th>
+                            <th class="text-center">Tổng thể</th>
+                            <th class="text-center d-none d-md-table-cell">Thái độ</th>
+                            <th class="text-center d-none d-md-table-cell">Thể lực</th>
+                            <th class="text-center d-none d-md-table-cell">Kỹ thuật</th>
+                            <th class="text-center d-none d-md-table-cell">Chiến thuật</th>
+                            <th>Người chấm</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.Ratings)
+                        {
+                            <tr>
+                                <td class="small text-nowrap">@r.RatingDate.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    @{
+                                        var (typeBadge, typeIcon) = r.RatingType switch
+                                        {
+                                            FootballManager.Models.RatingType.AfterMatch    => ("bg-primary", "bi-trophy"),
+                                            FootballManager.Models.RatingType.AfterTraining => ("bg-success", "bi-activity"),
+                                            FootballManager.Models.RatingType.Weekly        => ("bg-info text-dark", "bi-calendar-week"),
+                                            FootballManager.Models.RatingType.Monthly       => ("bg-warning text-dark", "bi-calendar-month"),
+                                            _                                                => ("bg-secondary", "bi-tag")
+                                        };
+                                    }
+                                    <span class="badge @typeBadge small">
+                                        <i class="bi @typeIcon me-1"></i>@r.RatingTypeLabel
+                                    </span>
+                                    @if (!string.IsNullOrEmpty(r.MatchLabel))
+                                    {
+                                        <div class="text-muted" style="font-size:0.72rem">@r.MatchLabel</div>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @{
+                                        var ratingClass = r.OverallRating >= 8 ? "text-success fw-bold fs-6"
+                                                        : r.OverallRating >= 6 ? "text-primary fw-semibold"
+                                                        : "text-danger fw-semibold";
+                                    }
+                                    <span class="@ratingClass">@r.OverallRating.ToString("0.#")</span>
+                                </td>
+                                <td class="text-center d-none d-md-table-cell small">
+                                    @(r.AttitudeRating.HasValue ? r.AttitudeRating.Value.ToString("0.#") : "-")
+                                </td>
+                                <td class="text-center d-none d-md-table-cell small">
+                                    @(r.FitnessRating.HasValue ? r.FitnessRating.Value.ToString("0.#") : "-")
+                                </td>
+                                <td class="text-center d-none d-md-table-cell small">
+                                    @(r.TechnicalRating.HasValue ? r.TechnicalRating.Value.ToString("0.#") : "-")
+                                </td>
+                                <td class="text-center d-none d-md-table-cell small">
+                                    @(r.TacticalRating.HasValue ? r.TacticalRating.Value.ToString("0.#") : "-")
+                                </td>
+                                <td class="small">@r.RatedByName</td>
+                                <td class="text-center">
+                                    @if (r.IsPublishedToPlayer)
+                                    {
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                            <i class="bi bi-eye me-1"></i>Công bố
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                            <i class="bi bi-eye-slash me-1"></i>Nội bộ
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-end text-nowrap">
+                                    @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                                    {
+                                        @* Nút xem ghi chú *@
+                                        @if (!string.IsNullOrEmpty(r.Notes))
+                                        {
+                                            <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1 me-1"
+                                                    data-bs-toggle="popover"
+                                                    data-bs-content="@r.Notes"
+                                                    data-bs-trigger="focus"
+                                                    title="Nhận xét">
+                                                <i class="bi bi-chat-text"></i>
+                                            </button>
+                                        }
+
+                                        @* Toggle publish *@
+                                        <form asp-action="TogglePublish" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@r.Id" />
+                                            <input type="hidden" name="playerId" value="@Model.PlayerId" />
+                                            <button type="submit"
+                                                    class="btn btn-xs @(r.IsPublishedToPlayer ? "btn-outline-warning" : "btn-outline-success") py-0 px-1 me-1"
+                                                    title="@(r.IsPublishedToPlayer ? "Ẩn khỏi cầu thủ" : "Công bố cho cầu thủ")">
+                                                <i class="bi @(r.IsPublishedToPlayer ? "bi-eye-slash" : "bi-eye")"></i>
+                                            </button>
+                                        </form>
+
+                                        @* Sửa *@
+                                        <a asp-action="Edit" asp-route-id="@r.Id" asp-route-playerId="@Model.PlayerId"
+                                           class="btn btn-xs btn-outline-primary py-0 px-1 me-1"
+                                           title="Chỉnh sửa">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+
+                                        @* Xóa *@
+                                        <form asp-action="Delete" method="post" class="d-inline"
+                                              onsubmit="return confirm('Xóa đánh giá này?')">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@r.Id" />
+                                            <input type="hidden" name="playerId" value="@Model.PlayerId" />
+                                            <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1"
+                                                    title="Xóa">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+        // Popover init
+        document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+            new bootstrap.Popover(el, { html: false })
+        });
+
+        @if (Model.ChartPoints.Any())
+        {
+            <text>
+            const chartLabels   = @Html.Raw(chartLabels);
+            const overallData   = @Html.Raw(overallData);
+            const attitudeData  = @Html.Raw(attitudeData);
+            const fitnessData   = @Html.Raw(fitnessData);
+            const technicalData = @Html.Raw(technicalData);
+            const tacticalData  = @Html.Raw(tacticalData);
+
+            const ctx = document.getElementById('ratingChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            label: 'Tổng thể',
+                            data: overallData,
+                            borderColor: '#198754',
+                            backgroundColor: 'rgba(25,135,84,0.08)',
+                            borderWidth: 3,
+                            pointRadius: 5,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Thái độ',
+                            data: attitudeData,
+                            borderColor: '#0d6efd',
+                            borderDash: [4,3],
+                            borderWidth: 1.5,
+                            pointRadius: 3,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Thể lực',
+                            data: fitnessData,
+                            borderColor: '#dc3545',
+                            borderDash: [4,3],
+                            borderWidth: 1.5,
+                            pointRadius: 3,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Kỹ thuật',
+                            data: technicalData,
+                            borderColor: '#0dcaf0',
+                            borderDash: [4,3],
+                            borderWidth: 1.5,
+                            pointRadius: 3,
+                            tension: 0.3,
+                            fill: false
+                        },
+                        {
+                            label: 'Chiến thuật',
+                            data: tacticalData,
+                            borderColor: '#ffc107',
+                            borderDash: [4,3],
+                            borderWidth: 1.5,
+                            pointRadius: 3,
+                            tension: 0.3,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ctx.dataset.label + ': ' + (ctx.parsed.y !== null ? ctx.parsed.y.toFixed(1) : 'N/A')
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 10,
+                            ticks: { stepSize: 1 },
+                            title: { display: true, text: 'Điểm (1–10)' }
+                        },
+                        x: {
+                            ticks: { maxRotation: 40, font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+            </text>
+        }
+    </script>
+}

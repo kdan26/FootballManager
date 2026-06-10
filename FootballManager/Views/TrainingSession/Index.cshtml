@@ -1,0 +1,104 @@
+@model FootballManager.ViewModels.TrainingSessionIndexViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Buổi tập";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-journal-check me-2 text-success"></i>Lịch buổi tập
+    </span>
+    <div class="d-flex gap-2">
+        <a asp-controller="Calendar" asp-action="Index" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-calendar3 me-1"></i>Xem lịch
+        </a>
+        @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+        {
+            <a asp-action="Create" class="btn btn-success btn-sm">
+                <i class="bi bi-plus-lg me-1"></i>Thêm buổi tập
+            </a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* Lọc đội *@
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-auto fw-semibold">Đội:</div>
+            <div class="col-md-3">
+                <select name="teamId" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">-- Tất cả --</option>
+                    @foreach (var t in Model.Teams)
+                    {
+                        <option value="@t.Value"
+                                selected="@(Model.SelectedTeamId?.ToString() == t.Value ? "selected" : null)">
+                            @t.Text
+                        </option>
+                    }
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Sessions.Any())
+{
+    <div class="alert alert-light border text-center py-5">
+        <i class="bi bi-calendar-x fs-1 text-muted d-block mb-2"></i>
+        <span class="text-muted">Chưa có buổi tập nào.</span>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Tiêu đề</th>
+                            <th>Đội</th>
+                            <th>Thời gian</th>
+                            <th>Địa điểm</th>
+                            <th class="text-center">Bài tập</th>
+                            <th>Trạng thái</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var s in Model.Sessions)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@s.Title</td>
+                                <td class="text-muted small">@s.TeamName</td>
+                                <td class="small">@s.ScheduledAt.ToString("HH:mm — dd/MM/yyyy")</td>
+                                <td class="small text-muted">@(s.Location ?? "—")</td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary">@s.DrillCount</span>
+                                </td>
+                                <td>
+                                    <span class="badge @s.StatusBadge">@s.StatusLabel</span>
+                                </td>
+                                <td>
+                                    <a asp-action="Details" asp-route-id="@s.Id"
+                                       class="btn btn-sm btn-outline-secondary py-0 px-2">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

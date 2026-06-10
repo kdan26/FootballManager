@@ -1,0 +1,511 @@
+@using FootballManager.Models
+@using FootballManager.ViewModels
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Chỉ số cầu thủ";
+    var player = ViewBag.Player as PlayerDetailsViewModel;
+    var matchStats = ViewBag.MatchStats as List<PlayerMatchStatsListItem> ?? new();
+    var trainingStats = ViewBag.TrainingStats as List<PlayerTrainingStatsListItem> ?? new();
+    var chart = ViewBag.ChartData as PerformanceChartViewModel ?? new();
+
+    string healthBadge = player?.HealthStatus switch
+    {
+        PlayerHealthStatus.Fit        => "bg-success",
+        PlayerHealthStatus.Injured    => "bg-danger",
+        PlayerHealthStatus.Sick       => "bg-warning text-dark",
+        PlayerHealthStatus.Suspended  => "bg-secondary",
+        PlayerHealthStatus.Recovering => "bg-info text-dark",
+        _ => "bg-secondary"
+    };
+    string healthLabel = player?.HealthStatus switch
+    {
+        PlayerHealthStatus.Fit        => "Sẵn sàng",
+        PlayerHealthStatus.Injured    => "Chấn thương",
+        PlayerHealthStatus.Sick       => "Ốm đau",
+        PlayerHealthStatus.Suspended  => "Treo giò",
+        PlayerHealthStatus.Recovering => "Đang hồi phục",
+        _ => ""
+    };
+
+    // Serialize chart data cho JS
+    var jsOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    string trainingLabels   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.Label), jsOptions);
+    string coachRatings     = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.CoachRating), jsOptions);
+    string physicalScores   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.PhysicalScore), jsOptions);
+    string technicalScores  = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.TechnicalScore), jsOptions);
+    string tacticalScores   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.TacticalScore), jsOptions);
+
+    string matchLabels      = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.Label), jsOptions);
+    string passCompletion   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.PassCompletionPct), jsOptions);
+    string keyMetric1Data   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.KeyMetric1), jsOptions);
+    string keyMetric1Label  = chart.MatchPoints.FirstOrDefault()?.KeyMetric1Label ?? "";
+    string keyMetric2Data   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.KeyMetric2), jsOptions);
+    string keyMetric2Label  = chart.MatchPoints.FirstOrDefault()?.KeyMetric2Label ?? "";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <a asp-controller="Player" asp-action="Details" asp-route-id="@player?.Id"
+           class="btn btn-outline-secondary btn-sm me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <span class="fs-5 fw-semibold">
+            <i class="bi bi-graph-up me-2 text-success"></i>Chỉ số — @player?.FullName
+        </span>
+    </div>
+    <span class="badge @healthBadge fs-6">@healthLabel</span>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>@TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@* Thông tin cơ bản *@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                     style="width:60px;height:60px;font-size:1.4rem">
+                    @(player?.JerseyNumber?.ToString() ?? "?")
+                </div>
+            </div>
+            <div class="col">
+                <h5 class="mb-0">@player?.FullName</h5>
+                <span class="text-muted">@player?.PositionLabel — @player?.TeamName</span>
+            </div>
+            @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+            {
+                <div class="col-auto d-flex gap-2">
+                    <a asp-action="MatchStats" asp-route-playerId="@player?.Id"
+                       class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-plus me-1"></i>Nhập chỉ số trận
+                    </a>
+                    <a asp-action="Training" asp-route-playerId="@player?.Id"
+                       class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-plus me-1"></i>Nhập chỉ số tập
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    @* Chỉ số thi đấu *@
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-trophy me-2 text-warning"></i>Chỉ số thi đấu</span>
+                <span class="badge bg-secondary">@matchStats.Count trận</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!matchStats.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Chưa có dữ liệu thi đấu</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Trận</th>
+                                    <th class="text-center">Phút</th>
+                                    <th class="text-center">% Chuyền</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in matchStats)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="fw-semibold small">@s.MatchLabel</div>
+                                            <div class="text-muted" style="font-size:0.75rem">@s.MatchDate.ToString("dd/MM/yyyy")</div>
+                                        </td>
+                                        <td class="text-center">@s.MinutesPlayed'</td>
+                                        <td class="text-center">
+                                            @(s.PassCompletionPct.HasValue ? $"{s.PassCompletionPct:0.#}%" : "-")
+                                        </td>
+                                        <td>
+                                            @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                                            {
+                                                <a asp-action="MatchStats"
+                                                   asp-route-playerId="@player?.Id"
+                                                   asp-route-matchId="@s.MatchId"
+                                                   class="btn btn-xs btn-outline-secondary py-0 px-1"
+                                                   title="Chỉnh sửa chỉ số">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Chỉ số bài tập *@
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-activity me-2 text-success"></i>Chỉ số bài tập đào tạo</span>
+                <span class="badge bg-secondary">@trainingStats.Count buổi</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!trainingStats.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Chưa có dữ liệu bài tập</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Bài tập</th>
+                                    <th class="text-center">Loại</th>
+                                    <th class="text-center">Điểm HLV</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var s in trainingStats)
+                                {
+                                    <tr>
+                                        <td class="small">@s.TrainingDate.ToString("dd/MM/yy")</td>
+                                        <td>
+                                            <span class="fw-semibold small">@s.DrillName</span>
+                                            @if (!string.IsNullOrEmpty(s.CoachNotes))
+                                            {
+                                                <div class="text-muted" style="font-size:0.75rem">@s.CoachNotes</div>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge @(s.Category == FootballManager.Models.TrainingCategory.Physical ? "bg-danger" : s.Category == FootballManager.Models.TrainingCategory.Technical ? "bg-primary" : "bg-warning text-dark") small">
+                                                @s.CategoryLabel
+                                            </span>
+                                        </td>
+                                        <td class="text-center fw-bold">
+                                            @(s.CoachRating.HasValue ? $"{s.CoachRating:0.#}/10" : "-")
+                                        </td>
+                                        <td>
+                                            @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                                            {
+                                                <form asp-action="DeleteTraining" method="post"
+                                                      onsubmit="return confirm('Xóa bản ghi này?')">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="id" value="@s.Id" />
+                                                    <input type="hidden" name="playerId" value="@player?.Id" />
+                                                    <button type="submit" class="btn btn-xs btn-outline-danger py-0 px-1">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ══════════════════════════════════════════════════════
+   BIỂU ĐỒ PHONG ĐỘ
+══════════════════════════════════════════════════════ *@
+<div class="mt-4">
+    <h6 class="fw-semibold mb-3">
+        <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Biểu đồ phong độ
+    </h6>
+
+    @* Thống kê nhanh *@
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 bg-success bg-opacity-10">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-success">
+                        @(chart.AvgCoachRating.HasValue ? $"{chart.AvgCoachRating:0.#}" : "—")
+                    </div>
+                    <div class="small text-muted">Điểm TB của HLV</div>
+                    @if (chart.RatingTrend.HasValue)
+                    {
+                        <div class="small mt-1">
+                            @if (chart.RatingTrend > 0)
+                            {
+                                <span class="text-success fw-semibold">
+                                    <i class="bi bi-arrow-up-short"></i>+@chart.RatingTrend so với trước
+                                </span>
+                            }
+                            else if (chart.RatingTrend < 0)
+                            {
+                                <span class="text-danger fw-semibold">
+                                    <i class="bi bi-arrow-down-short"></i>@chart.RatingTrend so với trước
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Ổn định</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 bg-primary bg-opacity-10">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-primary">
+                        @(chart.AvgPassCompletion.HasValue ? $"{chart.AvgPassCompletion:0.#}%" : "—")
+                    </div>
+                    <div class="small text-muted">% Chuyền TB trận đấu</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 bg-warning bg-opacity-10">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-warning">@chart.TotalTrainingSessions</div>
+                    <div class="small text-muted">Buổi tập (30 gần nhất)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 bg-danger bg-opacity-10">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-danger">@chart.TotalMatchesPlayed</div>
+                    <div class="small text-muted">Trận (10 gần nhất)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Biểu đồ tập luyện *@
+    @if (chart.TrainingPoints.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-activity me-2 text-success"></i>
+                Phong độ tập luyện — Điểm HLV theo thời gian
+                <span class="text-muted small ms-2">(30 buổi gần nhất)</span>
+            </div>
+            <div class="card-body">
+                <canvas id="trainingChart" height="100"></canvas>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mb-4">
+            <i class="bi bi-info-circle me-2 text-muted"></i>
+            Chưa có dữ liệu buổi tập để vẽ biểu đồ. Hãy nhập chỉ số tập để theo dõi phong độ.
+        </div>
+    }
+
+    @* Biểu đồ thi đấu *@
+    @if (chart.MatchPoints.Any())
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-trophy me-2 text-warning"></i>
+                Chỉ số thi đấu — % Chuyền & chỉ số vị trí
+                <span class="text-muted small ms-2">(10 trận gần nhất)</span>
+            </div>
+            <div class="card-body">
+                <canvas id="matchChart" height="100"></canvas>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border">
+            <i class="bi bi-info-circle me-2 text-muted"></i>
+            Chưa có dữ liệu thi đấu để vẽ biểu đồ.
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    const trainingLabels  = @Html.Raw(trainingLabels);
+    const coachRatings    = @Html.Raw(coachRatings);
+    const physicalScores  = @Html.Raw(physicalScores);
+    const technicalScores = @Html.Raw(technicalScores);
+    const tacticalScores  = @Html.Raw(tacticalScores);
+
+    const matchLabels     = @Html.Raw(matchLabels);
+    const passCompletion  = @Html.Raw(passCompletion);
+    const keyMetric1      = @Html.Raw(keyMetric1Data);
+    const keyMetric1Lbl   = @Json.Serialize(keyMetric1Label);
+    const keyMetric2      = @Html.Raw(keyMetric2Data);
+    const keyMetric2Lbl   = @Json.Serialize(keyMetric2Label);
+
+    // ── Biểu đồ 1: Phong độ tập luyện ──
+    const trainingCtx = document.getElementById('trainingChart');
+    if (trainingCtx && trainingLabels.length > 0) {
+        new Chart(trainingCtx, {
+            type: 'line',
+            data: {
+                labels: trainingLabels,
+                datasets: [
+                    {
+                        label: 'Điểm HLV (1–10)',
+                        data: coachRatings,
+                        borderColor: '#198754',
+                        backgroundColor: 'rgba(25,135,84,0.1)',
+                        borderWidth: 2.5,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#198754',
+                        tension: 0.3,
+                        fill: true,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Thể lực (0–10)',
+                        data: physicalScores,
+                        borderColor: '#dc3545',
+                        borderWidth: 1.5,
+                        pointRadius: 4,
+                        borderDash: [5, 3],
+                        tension: 0.3,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Kỹ thuật (0–10)',
+                        data: technicalScores,
+                        borderColor: '#0d6efd',
+                        borderWidth: 1.5,
+                        pointRadius: 4,
+                        borderDash: [5, 3],
+                        tension: 0.3,
+                        spanGaps: true
+                    },
+                    {
+                        label: 'Chiến thuật (0–10)',
+                        data: tacticalScores,
+                        borderColor: '#ffc107',
+                        borderWidth: 1.5,
+                        pointRadius: 4,
+                        borderDash: [5, 3],
+                        tension: 0.3,
+                        spanGaps: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ctx.parsed.y != null
+                                ? `${ctx.dataset.label}: ${ctx.parsed.y}`
+                                : null
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: 0, max: 10,
+                        ticks: { stepSize: 1 },
+                        title: { display: true, text: 'Điểm (0–10)' }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            callback: function(val) {
+                                const lbl = this.getLabelForValue(val);
+                                return lbl.length > 18 ? lbl.substring(0, 18) + '…' : lbl;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ── Biểu đồ 2: Chỉ số thi đấu ──
+    const matchCtx = document.getElementById('matchChart');
+    if (matchCtx && matchLabels.length > 0) {
+        const datasets = [
+            {
+                label: '% Chuyền chính xác',
+                data: passCompletion,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13,110,253,0.1)',
+                borderWidth: 2.5,
+                pointRadius: 5,
+                tension: 0.3,
+                fill: true,
+                spanGaps: true,
+                yAxisID: 'yPct'
+            }
+        ];
+
+        if (keyMetric1Lbl) {
+            datasets.push({
+                label: keyMetric1Lbl,
+                data: keyMetric1,
+                borderColor: '#198754',
+                borderWidth: 2,
+                pointRadius: 4,
+                tension: 0.3,
+                spanGaps: true,
+                yAxisID: 'yPct'
+            });
+        }
+        if (keyMetric2Lbl) {
+            datasets.push({
+                label: keyMetric2Lbl,
+                data: keyMetric2,
+                borderColor: '#fd7e14',
+                borderWidth: 2,
+                pointRadius: 4,
+                tension: 0.3,
+                spanGaps: true,
+                yAxisID: 'yPct'
+            });
+        }
+
+        new Chart(matchCtx, {
+            type: 'line',
+            data: { labels: matchLabels, datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    yPct: {
+                        type: 'linear',
+                        position: 'left',
+                        min: 0, max: 100,
+                        title: { display: true, text: 'Chỉ số (%)' }
+                    },
+                    x: {
+                        ticks: { maxRotation: 35 }
+                    }
+                }
+            }
+        });
+    }
+})();
+</script>
+}

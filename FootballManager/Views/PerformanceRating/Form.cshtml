@@ -1,0 +1,222 @@
+@using FootballManager.Models
+@using FootballManager.ViewModels
+@model PerformanceRatingFormViewModel
+
+@{
+    var isEdit = Model.Id > 0;
+    ViewData["Title"] = isEdit ? "Sửa đánh giá phong độ" : "Thêm đánh giá phong độ";
+}
+
+<div class="d-flex align-items-center mb-3">
+    <a asp-action="Index" asp-route-playerId="@Model.PlayerId"
+       class="btn btn-outline-secondary btn-sm me-2">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-star-fill me-2 text-warning"></i>
+        @(isEdit ? "Sửa đánh giá" : "Thêm đánh giá") — @Model.PlayerName
+    </span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <form asp-action="Save" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="PlayerId" />
+                    <input type="hidden" asp-for="PlayerName" />
+
+                    @* Loại đánh giá + Ngày *@
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="RatingType" class="form-label fw-semibold"></label>
+                            <select asp-for="RatingType" class="form-select" id="ratingTypeSelect">
+                                <option value="AfterMatch">Sau trận đấu</option>
+                                <option value="AfterTraining">Sau buổi tập</option>
+                                <option value="Weekly">Đánh giá tuần</option>
+                                <option value="Monthly">Đánh giá tháng</option>
+                            </select>
+                            <span asp-validation-for="RatingType" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="RatingDate" class="form-label fw-semibold"></label>
+                            <input asp-for="RatingDate" type="date" class="form-control" />
+                            <span asp-validation-for="RatingDate" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    @* Chọn trận (chỉ hiện khi loại = AfterMatch) *@
+                    <div class="mb-3" id="matchSection">
+                        <label asp-for="MatchId" class="form-label fw-semibold"></label>
+                        <select asp-for="MatchId" asp-items="Model.Matches"
+                                class="form-select">
+                            <option value="">-- Không gắn với trận cụ thể --</option>
+                        </select>
+                    </div>
+
+                    <hr class="my-3" />
+
+                    @* Điểm tổng thể *@
+                    <div class="mb-4">
+                        <label asp-for="OverallRating" class="form-label fw-semibold">
+                            Điểm tổng thể <span class="text-danger">*</span>
+                        </label>
+                        <div class="d-flex align-items-center gap-3">
+                            <input asp-for="OverallRating" type="range"
+                                   class="form-range flex-grow-1" min="1" max="10" step="0.5"
+                                   id="overallSlider" oninput="syncSlider('overall', this.value)" />
+                            <input type="number" id="overallNum" class="form-control text-center fw-bold fs-5"
+                                   style="width:75px" min="1" max="10" step="0.5"
+                                   value="@Model.OverallRating"
+                                   oninput="syncNum('overall', this.value)" />
+                        </div>
+                        <span asp-validation-for="OverallRating" class="text-danger small"></span>
+                    </div>
+
+                    @* Tiêu chí phụ *@
+                    <p class="text-muted small mb-2">Tiêu chí chi tiết (không bắt buộc)</p>
+                    <div class="row g-3 mb-3">
+                        @* Thái độ *@
+                        <div class="col-md-6">
+                            <label asp-for="AttitudeRating" class="form-label small fw-semibold">
+                                <i class="bi bi-emoji-smile text-primary me-1"></i>Thái độ / Nỗ lực
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input asp-for="AttitudeRating" type="range"
+                                       class="form-range flex-grow-1" min="1" max="10" step="0.5"
+                                       id="attitudeSlider" oninput="syncSlider('attitude', this.value)" />
+                                <input type="number" id="attitudeNum" class="form-control text-center small"
+                                       style="width:65px" min="1" max="10" step="0.5"
+                                       value="@(Model.AttitudeRating?.ToString() ?? "")"
+                                       placeholder="–"
+                                       oninput="syncNum('attitude', this.value)" />
+                            </div>
+                        </div>
+
+                        @* Thể lực *@
+                        <div class="col-md-6">
+                            <label asp-for="FitnessRating" class="form-label small fw-semibold">
+                                <i class="bi bi-lightning-fill text-danger me-1"></i>Thể lực
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input asp-for="FitnessRating" type="range"
+                                       class="form-range flex-grow-1" min="1" max="10" step="0.5"
+                                       id="fitnessSlider" oninput="syncSlider('fitness', this.value)" />
+                                <input type="number" id="fitnessNum" class="form-control text-center small"
+                                       style="width:65px" min="1" max="10" step="0.5"
+                                       value="@(Model.FitnessRating?.ToString() ?? "")"
+                                       placeholder="–"
+                                       oninput="syncNum('fitness', this.value)" />
+                            </div>
+                        </div>
+
+                        @* Kỹ thuật *@
+                        <div class="col-md-6">
+                            <label asp-for="TechnicalRating" class="form-label small fw-semibold">
+                                <i class="bi bi-controller text-info me-1"></i>Kỹ thuật
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input asp-for="TechnicalRating" type="range"
+                                       class="form-range flex-grow-1" min="1" max="10" step="0.5"
+                                       id="technicalSlider" oninput="syncSlider('technical', this.value)" />
+                                <input type="number" id="technicalNum" class="form-control text-center small"
+                                       style="width:65px" min="1" max="10" step="0.5"
+                                       value="@(Model.TechnicalRating?.ToString() ?? "")"
+                                       placeholder="–"
+                                       oninput="syncNum('technical', this.value)" />
+                            </div>
+                        </div>
+
+                        @* Chiến thuật *@
+                        <div class="col-md-6">
+                            <label asp-for="TacticalRating" class="form-label small fw-semibold">
+                                <i class="bi bi-diagram-3 text-warning me-1"></i>Chiến thuật
+                            </label>
+                            <div class="d-flex align-items-center gap-2">
+                                <input asp-for="TacticalRating" type="range"
+                                       class="form-range flex-grow-1" min="1" max="10" step="0.5"
+                                       id="tacticalSlider" oninput="syncSlider('tactical', this.value)" />
+                                <input type="number" id="tacticalNum" class="form-control text-center small"
+                                       style="width:65px" min="1" max="10" step="0.5"
+                                       value="@(Model.TacticalRating?.ToString() ?? "")"
+                                       placeholder="–"
+                                       oninput="syncNum('tactical', this.value)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Nhận xét *@
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label fw-semibold">
+                            <i class="bi bi-chat-left-text me-1"></i>Nhận xét chi tiết
+                        </label>
+                        <textarea asp-for="Notes" class="form-control" rows="3"
+                                  placeholder="Điểm mạnh, điểm cần cải thiện, chỉ dẫn cụ thể..."></textarea>
+                        <span asp-validation-for="Notes" class="text-danger small"></span>
+                        <div class="form-text">Tối đa 1000 ký tự</div>
+                    </div>
+
+                    @* Công bố *@
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input asp-for="IsPublishedToPlayer" class="form-check-input"
+                                   type="checkbox" role="switch" id="publishSwitch" />
+                            <label class="form-check-label" for="publishSwitch">
+                                <i class="bi bi-eye me-1 text-success"></i>
+                                Công bố cho cầu thủ xem
+                            </label>
+                        </div>
+                        <div class="form-text">Tắt = chỉ HLV và ban huấn luyện thấy</div>
+                    </div>
+
+                    @* Buttons *@
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success px-4">
+                            <i class="bi bi-check-lg me-1"></i>
+                            @(isEdit ? "Cập nhật" : "Lưu đánh giá")
+                        </button>
+                        <a asp-action="Index" asp-route-playerId="@Model.PlayerId"
+                           class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Ẩn/hiện dropdown trận theo loại đánh giá
+        const ratingTypeSelect = document.getElementById('ratingTypeSelect');
+        const matchSection     = document.getElementById('matchSection');
+
+        function toggleMatchSection() {
+            matchSection.style.display =
+                ratingTypeSelect.value === 'AfterMatch' ? 'block' : 'none';
+        }
+        ratingTypeSelect.addEventListener('change', toggleMatchSection);
+        toggleMatchSection();
+
+        // Sync slider ↔ number input
+        function syncSlider(key, val) {
+            const num = document.getElementById(key + 'Num');
+            if (num) num.value = val;
+        }
+        function syncNum(key, val) {
+            const slider = document.getElementById(key + 'Slider');
+            if (slider && val !== '') slider.value = val;
+        }
+
+        // Khởi tạo slider cho các tiêu chí (set giá trị ban đầu)
+        ['attitude', 'fitness', 'technical', 'tactical'].forEach(key => {
+            const num    = document.getElementById(key + 'Num');
+            const slider = document.getElementById(key + 'Slider');
+            if (num && slider && num.value !== '') {
+                slider.value = num.value;
+            }
+        });
+    </script>
+}

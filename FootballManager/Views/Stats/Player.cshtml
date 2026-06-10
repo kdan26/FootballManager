@@ -1,0 +1,63 @@
+@model FootballManager.ViewModels.PlayerStatsItem
+@{
+    ViewData["Title"] = $"Thống kê - {Model.FullName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-person-lines-fill me-2 text-success"></i>Thống kê — @Model.FullName</h4>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="fs-1 fw-bold text-success">@Model.Goals</div>
+                <div class="text-muted small">⚽ Bàn thắng</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="fs-1 fw-bold text-primary">@Model.Penalties</div>
+                <div class="text-muted small">Phạt đền</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="fs-1 fw-bold text-warning">@Model.YellowCards</div>
+                <div class="text-muted small">🟨 Thẻ vàng</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card text-center border-0 shadow-sm">
+            <div class="card-body">
+                <div class="fs-1 fw-bold text-danger">@Model.RedCards</div>
+                <div class="text-muted small">🟥 Thẻ đỏ</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Đội bóng</dt>
+            <dd class="col-sm-9">@Model.TeamName</dd>
+            <dt class="col-sm-3">Vị trí</dt>
+            <dd class="col-sm-9">@Model.PositionLabel</dd>
+            <dt class="col-sm-3">Số áo</dt>
+            <dd class="col-sm-9">#@Model.JerseyNumber</dd>
+            <dt class="col-sm-3">Số trận tham gia</dt>
+            <dd class="col-sm-9">@Model.MatchesPlayed</dd>
+            <dt class="col-sm-3">Phản lưới</dt>
+            <dd class="col-sm-9 text-danger">@Model.OwnGoals</dd>
+        </dl>
+    </div>
+</div>

@@ -1,0 +1,105 @@
+@model FootballManager.ViewModels.DrillFormViewModel
+@{
+    ViewData["Title"] = "Tạo bài tập mới";
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-plus-circle me-2 text-success"></i>Tạo bài tập mới
+    </span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-collection-play me-2"></i>Thông tin bài tập
+            </div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="alert alert-danger py-2"
+                         style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label asp-for="Name" class="form-label fw-semibold"></label>
+                            <input asp-for="Name" class="form-control" placeholder="VD: Bài tập pressing cao, Chạy bền 5km..." />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Category" class="form-label fw-semibold"></label>
+                            <select asp-for="Category" class="form-select">
+                                <option value="Physical">💪 Thể lực</option>
+                                <option value="Technical">⚽ Kỹ thuật</option>
+                                <option value="Tactical">🧠 Chiến thuật</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label fw-semibold"></label>
+                        <textarea asp-for="Description" class="form-control" rows="2"
+                                  placeholder="Mô tả ngắn về mục tiêu bài tập..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Instructions" class="form-label fw-semibold">Hướng dẫn chi tiết</label>
+                        <textarea asp-for="Instructions" class="form-control" rows="5"
+                                  placeholder="Mô tả từng bước thực hiện, cách tổ chức cầu thủ, biến thể bài tập..."></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label asp-for="DurationMinutes" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <input asp-for="DurationMinutes" type="number" min="1" max="120" class="form-control" />
+                                <span class="input-group-text">phút</span>
+                            </div>
+                            <span asp-validation-for="DurationMinutes" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Difficulty" class="form-label fw-semibold"></label>
+                            <select asp-for="Difficulty" class="form-select" id="difficultySelect">
+                                <option value="1">★☆☆☆☆ Rất dễ</option>
+                                <option value="2">★★☆☆☆ Dễ</option>
+                                <option value="3" selected>★★★☆☆ Trung bình</option>
+                                <option value="4">★★★★☆ Khó</option>
+                                <option value="5">★★★★★ Rất khó</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input asp-for="IsShared" class="form-check-input" type="checkbox" />
+                                <label asp-for="IsShared" class="form-check-label fw-semibold">
+                                    Chia sẻ với tất cả HLV
+                                </label>
+                                <div class="form-text">Nếu bật, tất cả HLV đều thấy bài tập này</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label asp-for="VideoUrl" class="form-label fw-semibold">Link video minh hoạ (YouTube...)</label>
+                        <input asp-for="VideoUrl" class="form-control"
+                               placeholder="https://youtube.com/watch?v=..." />
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-1"></i>Lưu bài tập
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}

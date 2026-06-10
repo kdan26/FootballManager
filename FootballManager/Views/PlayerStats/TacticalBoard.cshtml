@@ -1,0 +1,508 @@
+@model List<FootballManager.ViewModels.PlayerListItemViewModel>
+@{
+    ViewData["Title"] = "Bảng chiến thuật";
+    int teamId       = (int)ViewBag.TeamId;
+    string formation = ViewBag.Formation as string ?? "4-3-3";
+    string notes     = ViewBag.Notes     as string ?? "";
+    string posJson   = ViewBag.PositionsJson as string ?? "[]";
+    string arrowJson = ViewBag.ArrowsJson    as string ?? "[]";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-diagram-3 me-2 text-success"></i>Bảng chiến thuật
+    </span>
+    <div class="d-flex gap-2">
+        <button id="btnUndo"   class="btn btn-outline-secondary btn-sm" title="Hoàn tác">
+            <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button id="btnClear"  class="btn btn-outline-danger btn-sm" title="Xóa mũi tên">
+            <i class="bi bi-eraser me-1"></i>Xóa mũi tên
+        </button>
+        <button id="btnReset"  class="btn btn-outline-warning btn-sm" title="Xếp lại vị trí mặc định">
+            <i class="bi bi-grid me-1"></i>Reset vị trí
+        </button>
+        <button id="btnSave"   class="btn btn-success btn-sm">
+            <i class="bi bi-save me-1"></i>Lưu
+        </button>
+    </div>
+</div>
+
+<div class="row g-3">
+    @* Cột trái: Toolbar + Danh sách cầu thủ *@
+    <div class="col-lg-3">
+        @* Chọn formation *@
+        <div class="card mb-3">
+            <div class="card-header fw-semibold small">Sơ đồ</div>
+            <div class="card-body py-2">
+                <select id="formationSelect" class="form-select form-select-sm">
+                    @foreach (var f in new[]{"4-3-3","4-4-2","3-5-2","4-2-3-1","5-3-2","3-4-3","4-1-4-1"})
+                    {
+                        <option value="@f" selected="@(f == formation ? "selected" : null)">@f</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @* Tool vẽ mũi tên *@
+        <div class="card mb-3">
+            <div class="card-header fw-semibold small">Công cụ</div>
+            <div class="card-body py-2 d-flex flex-column gap-2">
+                <div class="btn-group w-100" role="group">
+                    <button class="btn btn-sm btn-outline-secondary tool-btn active" data-tool="move" title="Di chuyển">
+                        <i class="bi bi-cursor-fill"></i> Di chuyển
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary tool-btn" data-tool="arrow" title="Vẽ mũi tên">
+                        <i class="bi bi-arrow-up-right"></i> Mũi tên
+                    </button>
+                </div>
+                @* Màu mũi tên *@
+                <div class="d-flex gap-1 flex-wrap" id="colorPicker">
+                    @foreach (var c in new[]{("Trắng","#ffffff"),("Vàng","#ffc107"),("Xanh lá","#198754"),("Đỏ","#dc3545"),("Xanh dương","#0d6efd")})
+                    {
+                        <button class="color-btn rounded-circle border"
+                                data-color="@c.Item2"
+                                title="@c.Item1"
+                                style="width:24px;height:24px;background:@c.Item2;cursor:pointer;@(c.Item2=="#ffffff"?"border-color:#ccc!important":"")"></button>
+                    }
+                </div>
+                @* Kiểu mũi tên *@
+                <div class="btn-group w-100" role="group">
+                    <button class="btn btn-sm btn-outline-secondary dash-btn active" data-dash="solid">─── Liền</button>
+                    <button class="btn btn-sm btn-outline-secondary dash-btn" data-dash="dashed">- - - Nét đứt</button>
+                </div>
+            </div>
+        </div>
+
+        @* Danh sách cầu thủ (kéo thả lên sân) *@
+        <div class="card">
+            <div class="card-header fw-semibold small">
+                <i class="bi bi-people me-1"></i>Cầu thủ
+            </div>
+            <div class="card-body p-2" style="max-height:320px;overflow-y:auto">
+                @foreach (var p in Model.Where(x => x.IsActive))
+                {
+                    string posBadge = p.Position switch
+                    {
+                        FootballManager.Models.PlayerPosition.GoalKeeper   => "bg-warning text-dark",
+                        FootballManager.Models.PlayerPosition.CenterBack
+                        or FootballManager.Models.PlayerPosition.FullBack  => "bg-success",
+                        FootballManager.Models.PlayerPosition.DefensiveMid
+                        or FootballManager.Models.PlayerPosition.CentralMid=> "bg-primary",
+                        _                                                   => "bg-danger"
+                    };
+                    <div class="player-chip d-flex align-items-center gap-2 p-1 mb-1 rounded border bg-white"
+                         style="cursor:grab"
+                         data-id="@p.Id"
+                         data-name="@p.FullName.Split(' ').Last()"
+                         data-jersey="@(p.JerseyNumber?.ToString() ?? "?")"
+                         draggable="true">
+                        <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold @posBadge"
+                             style="width:28px;height:28px;font-size:0.75rem;flex-shrink:0">
+                            @(p.JerseyNumber?.ToString() ?? "?")
+                        </div>
+                        <span class="small">@p.FullName</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Cột phải: Canvas sân cỏ *@
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-body p-2 text-center" style="background:#1a472a">
+                <canvas id="tacticalCanvas"
+                        width="700" height="500"
+                        style="border:2px solid #2d6a4f;cursor:crosshair;max-width:100%;touch-action:none">
+                </canvas>
+            </div>
+        </div>
+
+        @* Ghi chú *@
+        <div class="card mt-3">
+            <div class="card-header fw-semibold small">
+                <i class="bi bi-chat-left-text me-1"></i>Ghi chú chiến thuật
+            </div>
+            <div class="card-body py-2">
+                <textarea id="notesInput" class="form-control form-control-sm" rows="3"
+                          placeholder="Ghi chú về chiến thuật, bài phối hợp...">@notes</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    // ════════════════════════════════════════════
+    //  DỮ LIỆU BAN ĐẦU từ server
+    // ════════════════════════════════════════════
+    const TEAM_ID     = @teamId;
+    const TOKEN       = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+    let formation     = @Json.Serialize(formation);
+    let positions     = JSON.parse(@Json.Serialize(posJson));
+    let arrows        = JSON.parse(@Json.Serialize(arrowJson));
+    let history       = [];                      // undo stack
+
+    // ════════════════════════════════════════════
+    //  CANVAS SETUP
+    // ════════════════════════════════════════════
+    const canvas  = document.getElementById('tacticalCanvas');
+    const ctx     = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const R = 18; // bán kính icon cầu thủ
+
+    // Tool state
+    let currentTool  = 'move';
+    let currentColor = '#ffffff';
+    let currentDash  = 'solid';
+    let dragging     = null;   // {index, offX, offY}
+    let arrowStart   = null;   // {x,y}
+
+    // ════════════════════════════════════════════
+    //  VẼ SÂN CỎ
+    // ════════════════════════════════════════════
+    function drawPitch() {
+        ctx.fillStyle = '#2d6a4f';
+        ctx.fillRect(0, 0, W, H);
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+        ctx.lineWidth   = 1.5;
+
+        // Đường biên
+        ctx.strokeRect(30, 20, W-60, H-40);
+
+        // Vạch giữa sân
+        ctx.beginPath(); ctx.moveTo(30, H/2); ctx.lineTo(W-30, H/2); ctx.stroke();
+
+        // Vòng tròn giữa
+        ctx.beginPath(); ctx.arc(W/2, H/2, 50, 0, Math.PI*2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(W/2, H/2, 3, 0, Math.PI*2);
+        ctx.fillStyle = 'white'; ctx.fill();
+
+        // Vòng cấm đội A (trên)
+        ctx.strokeRect(W/2-88, 20, 176, 75);
+        ctx.strokeRect(W/2-44, 20, 88, 32);
+
+        // Vòng cấm đội B (dưới)
+        ctx.strokeRect(W/2-88, H-95, 176, 75);
+        ctx.strokeRect(W/2-44, H-52, 88, 32);
+
+        // Chấm penalty
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(W/2, 80, 3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(W/2, H-80, 3, 0, Math.PI*2); ctx.fill();
+    }
+
+    // ════════════════════════════════════════════
+    //  VẼ MŨI TÊN
+    // ════════════════════════════════════════════
+    function drawArrow(x1, y1, x2, y2, color, dash) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.fillStyle   = color;
+        ctx.lineWidth   = 2.5;
+        ctx.setLineDash(dash === 'dashed' ? [8,4] : []);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Đầu mũi tên
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const aLen  = 12;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - aLen * Math.cos(angle - Math.PI/6), y2 - aLen * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(x2 - aLen * Math.cos(angle + Math.PI/6), y2 - aLen * Math.sin(angle + Math.PI/6));
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // ════════════════════════════════════════════
+    //  VẼ CẦU THỦ
+    // ════════════════════════════════════════════
+    function drawPlayer(p) {
+        // Chọn màu theo loại vị trí (dựa trên tên)
+        ctx.save();
+        ctx.fillStyle   = '#1a56db';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 2;
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur  = 4;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, R, 0, Math.PI*2);
+        ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Số áo
+        ctx.fillStyle   = 'white';
+        ctx.font        = `bold 11px sans-serif`;
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.jerseyNumber, p.x, p.y - 2);
+
+        // Tên
+        ctx.font        = `10px sans-serif`;
+        ctx.fillStyle   = 'white';
+        ctx.shadowColor = 'black'; ctx.shadowBlur = 3;
+        ctx.fillText(p.name.substring(0,8), p.x, p.y + R + 10);
+
+        ctx.restore();
+    }
+
+    // ════════════════════════════════════════════
+    //  RENDER TOÀN BỘ
+    // ════════════════════════════════════════════
+    function render() {
+        drawPitch();
+        arrows.forEach(a => drawArrow(a.x1, a.y1, a.x2, a.y2, a.color, a.dash));
+        positions.forEach(p => drawPlayer(p));
+    }
+
+    // ════════════════════════════════════════════
+    //  VỊ TRÍ MẶC ĐỊNH THEO FORMATION
+    // ════════════════════════════════════════════
+    const FORMATIONS = {
+        '4-3-3':   [[W/2,460],[W/2-130,370],[W/2-43,370],[W/2+43,370],[W/2+130,370],[W/2-90,270],[W/2,250],[W/2+90,270],[W/2-120,150],[W/2,130],[W/2+120,150]],
+        '4-4-2':   [[W/2,460],[W/2-130,370],[W/2-43,370],[W/2+43,370],[W/2+130,370],[W/2-130,260],[W/2-43,260],[W/2+43,260],[W/2+130,260],[W/2-60,140],[W/2+60,140]],
+        '3-5-2':   [[W/2,460],[W/2-100,370],[W/2,360],[W/2+100,370],[W/2-150,260],[W/2-75,250],[W/2,240],[W/2+75,250],[W/2+150,260],[W/2-60,140],[W/2+60,140]],
+        '4-2-3-1': [[W/2,460],[W/2-130,370],[W/2-43,370],[W/2+43,370],[W/2+130,370],[W/2-60,290],[W/2+60,290],[W/2-120,190],[W/2,185],[W/2+120,190],[W/2,110]],
+        '5-3-2':   [[W/2,460],[W/2-160,375],[W/2-80,360],[W/2,355],[W/2+80,360],[W/2+160,375],[W/2-90,255],[W/2,245],[W/2+90,255],[W/2-60,140],[W/2+60,140]],
+        '3-4-3':   [[W/2,460],[W/2-100,375],[W/2,365],[W/2+100,375],[W/2-130,260],[W/2-43,255],[W/2+43,255],[W/2+130,260],[W/2-120,145],[W/2,130],[W/2+120,145]],
+        '4-1-4-1': [[W/2,460],[W/2-130,375],[W/2-43,375],[W/2+43,375],[W/2+130,375],[W/2,300],[W/2-150,210],[W/2-60,205],[W/2+60,205],[W/2+150,210],[W/2,120]],
+    };
+
+    function applyFormation(f) {
+        const coords = FORMATIONS[f] || FORMATIONS['4-3-3'];
+        positions = positions.map((p, i) => ({
+            ...p,
+            x: coords[i] ? coords[i][0] : p.x,
+            y: coords[i] ? coords[i][1] : p.y
+        }));
+        render();
+    }
+
+    // ════════════════════════════════════════════
+    //  MOUSE EVENTS
+    // ════════════════════════════════════════════
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = W / rect.width;
+        const scaleY = H / rect.height;
+        const src = e.touches ? e.touches[0] : e;
+        return {
+            x: (src.clientX - rect.left) * scaleX,
+            y: (src.clientY - rect.top)  * scaleY
+        };
+    }
+
+    function hitPlayer(x, y) {
+        return positions.findIndex(p => Math.hypot(p.x - x, p.y - y) < R + 2);
+    }
+
+    canvas.addEventListener('mousedown', onDown);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, {passive:false});
+
+    function onDown(e) {
+        const {x, y} = getPos(e);
+
+        if (currentTool === 'move') {
+            const idx = hitPlayer(x, y);
+            if (idx >= 0) {
+                history.push(JSON.parse(JSON.stringify(positions)));
+                dragging = { index: idx, offX: positions[idx].x - x, offY: positions[idx].y - y };
+            }
+        } else if (currentTool === 'arrow') {
+            arrowStart = {x, y};
+        }
+    }
+
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, {passive:false});
+
+    function onMove(e) {
+        if (!dragging && !arrowStart) return;
+        const {x, y} = getPos(e);
+
+        if (dragging) {
+            positions[dragging.index].x = Math.max(R, Math.min(W-R, x + dragging.offX));
+            positions[dragging.index].y = Math.max(R, Math.min(H-R, y + dragging.offY));
+            render();
+        } else if (arrowStart) {
+            render();
+            // Preview mũi tên đang vẽ
+            drawArrow(arrowStart.x, arrowStart.y, x, y, currentColor + 'aa', currentDash);
+        }
+    }
+
+    canvas.addEventListener('mouseup', onUp);
+    canvas.addEventListener('touchend', e => { e.preventDefault(); onUp(e); }, {passive:false});
+
+    function onUp(e) {
+        if (dragging) { dragging = null; return; }
+
+        if (arrowStart) {
+            const {x, y} = getPos(e);
+            const dist = Math.hypot(x - arrowStart.x, y - arrowStart.y);
+            if (dist > 15) {
+                history.push(JSON.parse(JSON.stringify({positions, arrows})));
+                arrows.push({ x1: arrowStart.x, y1: arrowStart.y,
+                              x2: x, y2: y,
+                              color: currentColor, dash: currentDash });
+                render();
+            }
+            arrowStart = null;
+        }
+    }
+
+    // ════════════════════════════════════════════
+    //  DRAG từ danh sách bên trái lên canvas
+    // ════════════════════════════════════════════
+    document.querySelectorAll('.player-chip').forEach(chip => {
+        chip.addEventListener('dragstart', e => {
+            e.dataTransfer.setData('playerId',      chip.dataset.id);
+            e.dataTransfer.setData('playerName',    chip.dataset.name);
+            e.dataTransfer.setData('playerJersey',  chip.dataset.jersey);
+        });
+    });
+
+    canvas.addEventListener('dragover',  e => e.preventDefault());
+    canvas.addEventListener('drop', e => {
+        e.preventDefault();
+        const pid     = parseInt(e.dataTransfer.getData('playerId'));
+        const pname   = e.dataTransfer.getData('playerName');
+        const pjersey = e.dataTransfer.getData('playerJersey');
+        const {x, y}  = getPos(e);
+
+        const existing = positions.findIndex(p => p.id === pid);
+        if (existing >= 0) {
+            positions[existing].x = x;
+            positions[existing].y = y;
+        } else {
+            positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x, y });
+        }
+        render();
+    });
+
+    // ════════════════════════════════════════════
+    //  BUTTONS
+    // ════════════════════════════════════════════
+    document.getElementById('btnUndo').addEventListener('click', () => {
+        if (history.length > 0) {
+            const prev = history.pop();
+            if (prev.positions) { positions = prev.positions; arrows = prev.arrows; }
+            else positions = prev;
+            render();
+        }
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+        if (!confirm('Xóa toàn bộ mũi tên?')) return;
+        history.push(JSON.parse(JSON.stringify({positions, arrows})));
+        arrows = []; render();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+        if (!confirm('Xếp lại cầu thủ về vị trí mặc định?')) return;
+        history.push(JSON.parse(JSON.stringify(positions)));
+        applyFormation(document.getElementById('formationSelect').value);
+    });
+
+    document.getElementById('btnSave').addEventListener('click', async () => {
+        const btn = document.getElementById('btnSave');
+        btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang lưu...';
+        try {
+            const form = new FormData();
+            form.append('teamId',        TEAM_ID);
+            form.append('formation',     document.getElementById('formationSelect').value);
+            form.append('notes',         document.getElementById('notesInput').value);
+            form.append('positionsJson', JSON.stringify(positions));
+            form.append('arrowsJson',    JSON.stringify(arrows));
+            form.append('__RequestVerificationToken', TOKEN);
+
+            const res = await fetch('/PlayerStats/SaveTacticalBoard', { method:'POST', body: form });
+            if (res.ok) {
+                btn.innerHTML = '<i class="bi bi-check me-1"></i>Đã lưu!';
+                btn.className = 'btn btn-success btn-sm';
+                setTimeout(() => {
+                    btn.innerHTML = '<i class="bi bi-save me-1"></i>Lưu';
+                    btn.disabled  = false;
+                }, 2000);
+            }
+        } catch { btn.innerHTML = '<i class="bi bi-save me-1"></i>Lưu'; btn.disabled = false; }
+    });
+
+    // Formation change
+    document.getElementById('formationSelect').addEventListener('change', function() {
+        formation = this.value;
+        applyFormation(this.value);
+    });
+
+    // Tool buttons
+    document.querySelectorAll('.tool-btn').forEach(b => {
+        b.addEventListener('click', function() {
+            document.querySelectorAll('.tool-btn').forEach(x => x.classList.remove('active'));
+            this.classList.add('active');
+            currentTool = this.dataset.tool;
+            canvas.style.cursor = currentTool === 'arrow' ? 'crosshair' : 'default';
+        });
+    });
+
+    // Color picker
+    document.querySelectorAll('.color-btn').forEach(b => {
+        b.addEventListener('click', function() {
+            document.querySelectorAll('.color-btn').forEach(x => x.style.outline = '');
+            this.style.outline = '2px solid #fff';
+            currentColor = this.dataset.color;
+        });
+    });
+    // Default active color
+    document.querySelector('.color-btn').style.outline = '2px solid #fff';
+
+    // Dash buttons
+    document.querySelectorAll('.dash-btn').forEach(b => {
+        b.addEventListener('click', function() {
+            document.querySelectorAll('.dash-btn').forEach(x => x.classList.remove('active'));
+            this.classList.add('active');
+            currentDash = this.dataset.dash;
+        });
+    });
+
+    // ════════════════════════════════════════════
+    //  KHỞI TẠO
+    // ════════════════════════════════════════════
+    if (positions.length === 0 && @Model.Count > 0) {
+        // Chưa có data — đặt cầu thủ vào vị trí mặc định
+        const players = @Html.Raw(
+            System.Text.Json.JsonSerializer.Serialize(
+                Model.Where(p => p.IsActive).Take(11).Select((p,i) => new {
+                    id = p.Id,
+                    name = p.FullName.Split(' ').Last(),
+                    jerseyNumber = p.JerseyNumber?.ToString() ?? "?"
+                })
+            )
+        );
+        const coords = FORMATIONS[formation] || FORMATIONS['4-3-3'];
+        positions = players.map((p, i) => ({
+            ...p,
+            x: coords[i] ? coords[i][0] : W/2,
+            y: coords[i] ? coords[i][1] : H/2
+        }));
+    }
+
+    render();
+
+    // Cần anti-forgery token — thêm hidden input
+    document.body.insertAdjacentHTML('beforeend',
+        `<form id="__afForm" style="display:none">@Html.AntiForgeryToken()</form>`);
+
+})();
+</script>
+}

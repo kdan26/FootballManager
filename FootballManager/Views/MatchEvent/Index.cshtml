@@ -1,0 +1,161 @@
+@model FootballManager.ViewModels.MatchEventsViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Sự kiện trận đấu";
+    var badge = Model.Status switch
+    {
+        MatchStatus.Scheduled => "bg-primary",
+        MatchStatus.Completed => "bg-success",
+        MatchStatus.Cancelled => "bg-secondary",
+        _ => "bg-secondary"
+    };
+    var label = Model.Status switch
+    {
+        MatchStatus.Scheduled => "Sắp diễn ra",
+        MatchStatus.Completed => "Đã kết thúc",
+        MatchStatus.Cancelled => "Đã hủy",
+        _ => ""
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-lightning-charge me-2 text-warning"></i>Sự kiện trận đấu</h4>
+    <a asp-controller="Match" asp-action="Details" asp-route-id="@Model.MatchId"
+       class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Quay lại
+    </a>
+</div>
+
+@* Scoreboard *@
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body text-center py-4">
+        <div class="d-flex justify-content-center align-items-center gap-4">
+            <div class="text-end" style="min-width:160px">
+                <div class="fw-bold fs-5">@Model.HomeTeamName</div>
+                <div class="text-muted small">Đội nhà</div>
+            </div>
+            <div class="display-4 fw-bold text-success px-3">
+                @Model.HomeGoals — @Model.AwayGoals
+            </div>
+            <div class="text-start" style="min-width:160px">
+                <div class="fw-bold fs-5">@Model.AwayTeamName</div>
+                <div class="text-muted small">Đội khách</div>
+            </div>
+        </div>
+        <div class="mt-2">
+            <span class="badge @badge">@label</span>
+            <span class="text-muted ms-2 small">@Model.MatchDate.ToString("dd/MM/yyyy HH:mm")</span>
+        </div>
+    </div>
+</div>
+
+@if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+{
+    <div class="mb-3">
+        <a asp-action="Add" asp-route-matchId="@Model.MatchId" class="btn btn-warning">
+            <i class="bi bi-plus-circle me-1"></i>Thêm sự kiện
+        </a>
+    </div>
+}
+
+@if (!Model.Events.Any())
+{
+    <div class="text-center py-4 text-muted">
+        <i class="bi bi-lightning fs-1"></i>
+        <p class="mt-2">Chưa có sự kiện nào được ghi nhận</p>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @* Đội nhà *@
+        <div class="col-md-6">
+            <h6 class="fw-semibold mb-2">@Model.HomeTeamName</h6>
+            @if (!Model.HomeEvents.Any())
+            {
+                <p class="text-muted small">Chưa có sự kiện</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var e in Model.HomeEvents)
+                    {
+                        <div class="list-group-item d-flex align-items-center gap-2">
+                            @if (e.Minute.HasValue)
+                            {
+                                <span class="badge bg-dark" style="min-width:36px">@(e.Minute)'</span>
+                            }
+                            <span>@e.EventLabel</span>
+                            <span class="fw-semibold">@e.PlayerName</span>
+                            @if (!string.IsNullOrEmpty(e.SubstitutePlayerName))
+                            {
+                                <span class="text-muted small">→ @e.SubstitutePlayerName</span>
+                            }
+                            @if (!string.IsNullOrEmpty(e.Description))
+                            {
+                                <span class="text-muted small ms-1">(@e.Description)</span>
+                            }
+                            @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                            {
+                                <form asp-action="Delete" method="post" class="ms-auto"
+                                      onsubmit="return confirm('Xóa sự kiện này?')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <input type="hidden" name="matchId" value="@Model.MatchId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @* Đội khách *@
+        <div class="col-md-6">
+            <h6 class="fw-semibold mb-2">@Model.AwayTeamName</h6>
+            @if (!Model.AwayEvents.Any())
+            {
+                <p class="text-muted small">Chưa có sự kiện</p>
+            }
+            else
+            {
+                <div class="list-group">
+                    @foreach (var e in Model.AwayEvents)
+                    {
+                        <div class="list-group-item d-flex align-items-center gap-2">
+                            @if (e.Minute.HasValue)
+                            {
+                                <span class="badge bg-dark" style="min-width:36px">@(e.Minute)'</span>
+                            }
+                            <span>@e.EventLabel</span>
+                            <span class="fw-semibold">@e.PlayerName</span>
+                            @if (!string.IsNullOrEmpty(e.SubstitutePlayerName))
+                            {
+                                <span class="text-muted small">→ @e.SubstitutePlayerName</span>
+                            }
+                            @if (!string.IsNullOrEmpty(e.Description))
+                            {
+                                <span class="text-muted small ms-1">(@e.Description)</span>
+                            }
+                            @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
+                            {
+                                <form asp-action="Delete" method="post" class="ms-auto"
+                                      onsubmit="return confirm('Xóa sự kiện này?')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <input type="hidden" name="matchId" value="@Model.MatchId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}

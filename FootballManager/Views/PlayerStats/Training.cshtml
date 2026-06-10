@@ -1,0 +1,219 @@
+@model FootballManager.ViewModels.PlayerTrainingStatsFormViewModel
+@using FootballManager.Models
+@{
+    ViewData["Title"] = "Nhập chỉ số bài tập";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-activity me-2"></i>Chỉ số bài tập — @Model.PlayerName
+            </div>
+            <div class="card-body">
+                <form asp-action="Training" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="PlayerId" />
+                    <input type="hidden" asp-for="PlayerName" />
+
+                    <div asp-validation-summary="All" class="alert alert-danger py-2"
+                         style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label asp-for="TrainingDate" class="form-label fw-semibold"></label>
+                            <input asp-for="TrainingDate" type="date" class="form-control"
+                                   value="@Model.TrainingDate.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="Category" class="form-label fw-semibold"></label>
+                            <select asp-for="Category" class="form-select" id="categorySelect">
+                                <option value="Physical">💪 Thể lực</option>
+                                <option value="Technical">⚽ Kỹ thuật</option>
+                                <option value="Tactical">🧠 Chiến thuật</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                Chọn từ thư viện
+                                <span class="text-muted fw-normal small">(tuỳ chọn)</span>
+                            </label>
+                            <select id="drillSelect" class="form-select">
+                                <option value="">-- Chọn bài tập có sẵn --</option>
+                            </select>
+                            <input type="hidden" asp-for="DrillId" id="drillIdInput" />
+                            <div id="drillInfo" class="form-text text-success" style="display:none"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="DrillName" class="form-label fw-semibold"></label>
+                            <input asp-for="DrillName" class="form-control" id="drillNameInput"
+                                   placeholder="Hoặc tự nhập tên..." />
+                            <span asp-validation-for="DrillName" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    @* Thể lực *@
+                    <div id="physicalSection">
+                        <h6 class="text-muted border-bottom pb-1 mb-3">Thể lực</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label asp-for="SprintSpeed" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="SprintSpeed" type="number" step="0.1" min="0" class="form-control" />
+                                    <span class="input-group-text">km/h</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="EnduranceScore" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="EnduranceScore" type="number" step="0.1" min="0" max="10" class="form-control" />
+                                    <span class="input-group-text">/10</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="DistanceRun" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="DistanceRun" type="number" step="0.1" min="0" class="form-control" />
+                                    <span class="input-group-text">km</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Kỹ thuật *@
+                    <div id="technicalSection" style="display:none">
+                        <h6 class="text-muted border-bottom pb-1 mb-3">Kỹ thuật</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label asp-for="TechniqueScore" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="TechniqueScore" type="number" step="0.1" min="0" max="10" class="form-control" />
+                                    <span class="input-group-text">/10</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="PassAccuracy" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="PassAccuracy" type="number" step="0.1" min="0" max="100" class="form-control" />
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="ShotsOnTarget" class="form-label fw-semibold"></label>
+                                <input asp-for="ShotsOnTarget" type="number" min="0" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Chiến thuật *@
+                    <div id="tacticalSection" style="display:none">
+                        <h6 class="text-muted border-bottom pb-1 mb-3">Chiến thuật</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label asp-for="TacticsScore" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <input asp-for="TacticsScore" type="number" step="0.1" min="0" max="10" class="form-control" />
+                                    <span class="input-group-text">/10</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @* HLV đánh giá *@
+                    <h6 class="text-muted border-bottom pb-1 mb-3">Đánh giá của HLV</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label asp-for="CoachRating" class="form-label fw-semibold"></label>
+                            <div class="input-group">
+                                <input asp-for="CoachRating" type="number" step="0.1" min="1" max="10" class="form-control" />
+                                <span class="input-group-text">/10</span>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <label asp-for="CoachNotes" class="form-label fw-semibold"></label>
+                            <input asp-for="CoachNotes" class="form-control" placeholder="Nhận xét của HLV..." />
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-save me-1"></i>Lưu
+                        </button>
+                        <a asp-action="Index" asp-route-playerId="@Model.PlayerId" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        // ── Hiện/ẩn section theo loại bài tập ──
+        function showSection(cat) {
+            document.getElementById('physicalSection').style.display  = cat === 'Physical'  ? 'block' : 'none';
+            document.getElementById('technicalSection').style.display = cat === 'Technical' ? 'block' : 'none';
+            document.getElementById('tacticalSection').style.display  = cat === 'Tactical'  ? 'block' : 'none';
+        }
+
+        const categorySelect = document.getElementById('categorySelect');
+        const drillSelect    = document.getElementById('drillSelect');
+        const drillIdInput   = document.getElementById('drillIdInput');
+        const drillNameInput = document.getElementById('drillNameInput');
+        const drillInfo      = document.getElementById('drillInfo');
+
+        // ── Load danh sách drill theo category ──
+        async function loadDrills(category) {
+            drillSelect.innerHTML = '<option value="">-- Đang tải... --</option>';
+            try {
+                const res  = await fetch(`/Drill/SelectList?category=${category}`);
+                const data = await res.json();
+
+                drillSelect.innerHTML = '<option value="">-- Chọn bài tập có sẵn --</option>';
+                if (data.length === 0) {
+                    drillSelect.innerHTML += '<option disabled>Chưa có bài tập loại này</option>';
+                    return;
+                }
+                data.forEach(d => {
+                    const dur = d.durationMinutes ? ` (${d.durationMinutes} phút)` : '';
+                    drillSelect.innerHTML += `<option value="${d.id}" data-name="${d.name}" data-desc="${d.description ?? ''}">${d.name}${dur}</option>`;
+                });
+
+                // Giữ selected nếu đang edit
+                const current = drillIdInput.value;
+                if (current) drillSelect.value = current;
+            } catch {
+                drillSelect.innerHTML = '<option value="">-- Lỗi tải danh sách --</option>';
+            }
+        }
+
+        // ── Khi chọn drill từ thư viện ──
+        drillSelect.addEventListener('change', function () {
+            const selected = this.options[this.selectedIndex];
+            if (this.value) {
+                drillIdInput.value   = this.value;
+                drillNameInput.value = selected.dataset.name;
+                const desc = selected.dataset.desc;
+                drillInfo.style.display = desc ? 'block' : 'none';
+                drillInfo.textContent   = desc ? `ℹ️ ${desc}` : '';
+            } else {
+                drillIdInput.value      = '';
+                drillInfo.style.display = 'none';
+            }
+        });
+
+        // ── Khi đổi category: reload drill list + reset section ──
+        categorySelect.addEventListener('change', function () {
+            showSection(this.value);
+            loadDrills(this.value);
+            drillSelect.value       = '';
+            drillIdInput.value      = '';
+            drillInfo.style.display = 'none';
+        });
+
+        // ── Khởi tạo ──
+        showSection(categorySelect.value);
+        loadDrills(categorySelect.value);
+    </script>
+}
