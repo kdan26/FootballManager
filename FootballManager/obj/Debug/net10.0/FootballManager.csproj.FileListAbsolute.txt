@@ -590,3 +590,4 @@ E:\FootballManager\FootballManager\obj\Debug\net10.0\refint\FootballManager.dll
 E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.pdb
 E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.genruntimeconfig.cache
 E:\FootballManager\FootballManager\obj\Debug\net10.0\ref\FootballManager.dll
+E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.sourcelink.json

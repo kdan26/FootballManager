@@ -114,20 +114,109 @@ namespace FootballManager.Services
 
         public async Task<(bool Success, string? ErrorMessage)> DeleteTeamAsync(int id)
         {
-            var team = await _db.Teams
-                .Include(t => t.HomeMatches)
-                .Include(t => t.AwayMatches)
-                .FirstOrDefaultAsync(t => t.Id == id);
-
+            var team = await _db.Teams.FindAsync(id);
             if (team == null)
                 return (false, "Không tìm thấy đội bóng");
 
-            if (team.HomeMatches.Any() || team.AwayMatches.Any())
-                return (false, "Không thể xóa đội đang có trận đấu liên quan");
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Lấy tất cả match liên quan
+                var matchIds = await _db.Matches
+                    .Where(m => m.HomeTeamId == id || m.AwayTeamId == id)
+                    .Select(m => m.Id)
+                    .ToListAsync();
 
-            _db.Teams.Remove(team);
-            await _db.SaveChangesAsync();
-            return (true, null);
+                if (matchIds.Any())
+                {
+                    // Xóa MatchEvent của các trận
+                    _db.MatchEvents.RemoveRange(
+                        _db.MatchEvents.Where(e => matchIds.Contains(e.MatchId)));
+
+                    // Xóa PlayerAttendance của các trận
+                    _db.PlayerAttendances.RemoveRange(
+                        _db.PlayerAttendances.Where(a => matchIds.Contains(a.MatchId)));
+
+                    // Xóa PlayerMatchStats của các trận
+                    _db.PlayerMatchStats.RemoveRange(
+                        _db.PlayerMatchStats.Where(s => matchIds.Contains(s.MatchId)));
+
+                    // Xóa PerformanceRating gắn với trận
+                    _db.PerformanceRatings.RemoveRange(
+                        _db.PerformanceRatings.Where(r => r.MatchId != null && matchIds.Contains(r.MatchId!.Value)));
+
+                    await _db.SaveChangesAsync();
+
+                    // Xóa các trận đấu
+                    _db.Matches.RemoveRange(
+                        _db.Matches.Where(m => matchIds.Contains(m.Id)));
+                    await _db.SaveChangesAsync();
+                }
+
+                // 2. Lấy tất cả cầu thủ của đội
+                var playerIds = await _db.Players
+                    .Where(p => p.TeamId == id)
+                    .Select(p => p.Id)
+                    .ToListAsync();
+
+                if (playerIds.Any())
+                {
+                    // Xóa dữ liệu còn lại của cầu thủ
+                    _db.PlayerTrainingStats.RemoveRange(
+                        _db.PlayerTrainingStats.Where(s => playerIds.Contains(s.PlayerId)));
+
+                    _db.TrainingAttendances.RemoveRange(
+                        _db.TrainingAttendances.Where(a => playerIds.Contains(a.PlayerId)));
+
+                    _db.PerformanceRatings.RemoveRange(
+                        _db.PerformanceRatings.Where(r => playerIds.Contains(r.PlayerId)));
+
+                    await _db.SaveChangesAsync();
+
+                    // Xóa cầu thủ
+                    _db.Players.RemoveRange(
+                        _db.Players.Where(p => playerIds.Contains(p.Id)));
+                    await _db.SaveChangesAsync();
+                }
+
+                // 3. Xóa TrainingSession của đội
+                var sessionIds = await _db.TrainingSessions
+                    .Where(s => s.TeamId == id)
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                if (sessionIds.Any())
+                {
+                    _db.TrainingSessionDrills.RemoveRange(
+                        _db.TrainingSessionDrills.Where(sd => sessionIds.Contains(sd.TrainingSessionId)));
+
+                    _db.TrainingAttendances.RemoveRange(
+                        _db.TrainingAttendances.Where(a => sessionIds.Contains(a.TrainingSessionId)));
+
+                    await _db.SaveChangesAsync();
+
+                    _db.TrainingSessions.RemoveRange(
+                        _db.TrainingSessions.Where(s => sessionIds.Contains(s.Id)));
+                    await _db.SaveChangesAsync();
+                }
+
+                // 4. Xóa TeamTactics
+                _db.TeamTactics.RemoveRange(
+                    _db.TeamTactics.Where(t => t.TeamId == id));
+                await _db.SaveChangesAsync();
+
+                // 5. Xóa đội
+                _db.Teams.Remove(team);
+                await _db.SaveChangesAsync();
+
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                return (false, $"Không thể xóa đội bóng: {ex.Message}");
+            }
         }
     }
 }

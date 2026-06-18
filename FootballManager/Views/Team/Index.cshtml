@@ -59,7 +59,7 @@ else
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form asp-action="Delete" asp-route-id="@team.Id" method="post" class="d-inline ms-1"
-                                      onsubmit="return confirm('Bạn có chắc muốn xóa đội @team.Name?')">
+                                      onsubmit="return confirm('Xóa đội \'' + '@team.Name' + '\'?\n\nSẽ xóa toàn bộ cầu thủ, trận đấu và dữ liệu liên quan. Không thể hoàn tác!')">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-trash"></i>

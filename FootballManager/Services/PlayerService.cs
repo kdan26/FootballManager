@@ -128,9 +128,49 @@ namespace FootballManager.Services
             if (player == null)
                 return (false, "Không tìm thấy cầu thủ");
 
-            _db.Players.Remove(player);
-            await _db.SaveChangesAsync();
-            return (true, null);
+            // Xóa toàn bộ dữ liệu liên quan trước (các bảng Restrict FK)
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                // Điểm danh trận
+                var playerAttendances = _db.PlayerAttendances.Where(a => a.PlayerId == id);
+                _db.PlayerAttendances.RemoveRange(playerAttendances);
+
+                // Chỉ số thi đấu
+                var matchStats = _db.PlayerMatchStats.Where(s => s.PlayerId == id);
+                _db.PlayerMatchStats.RemoveRange(matchStats);
+
+                // Chỉ số tập luyện
+                var trainingStats = _db.PlayerTrainingStats.Where(s => s.PlayerId == id);
+                _db.PlayerTrainingStats.RemoveRange(trainingStats);
+
+                // Điểm danh buổi tập
+                var trainingAttendances = _db.TrainingAttendances.Where(a => a.PlayerId == id);
+                _db.TrainingAttendances.RemoveRange(trainingAttendances);
+
+                // Sự kiện trận đấu (ghi bàn, thẻ...) — xóa cả các event dùng player làm substitute
+                var matchEvents = _db.MatchEvents
+                    .Where(e => e.PlayerId == id || e.SubstitutePlayerId == id);
+                _db.MatchEvents.RemoveRange(matchEvents);
+
+                // Đánh giá phong độ
+                var ratings = _db.PerformanceRatings.Where(r => r.PlayerId == id);
+                _db.PerformanceRatings.RemoveRange(ratings);
+
+                await _db.SaveChangesAsync();
+
+                // Cuối cùng xóa cầu thủ
+                _db.Players.Remove(player);
+                await _db.SaveChangesAsync();
+
+                await tx.CommitAsync();
+                return (true, null);
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                return (false, $"Không thể xóa cầu thủ: {ex.Message}");
+            }
         }
 
         public async Task UpdateHealthAsync(int playerId, PlayerHealthStatus status, string? note, DateTime? expectedReturn)
