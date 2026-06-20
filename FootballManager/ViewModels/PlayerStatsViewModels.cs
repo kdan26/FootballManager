@@ -35,13 +35,11 @@ namespace FootballManager.ViewModels
     {
         public List<TrainingChartPoint> TrainingPoints { get; set; } = new();
         public List<MatchChartPoint> MatchPoints { get; set; } = new();
-        // Thống kê nhanh
         public decimal? AvgCoachRating { get; set; }
         public decimal? AvgPassCompletion { get; set; }
         public int TotalTrainingSessions { get; set; }
         public int TotalMatchesPlayed { get; set; }
-        // Xu hướng: so sánh 3 buổi gần nhất vs 3 buổi trước đó
-        public decimal? RatingTrend { get; set; }  // dương = tăng, âm = giảm
+        public decimal? RatingTrend { get; set; }
     }
 
     public class PlayerStatsItem

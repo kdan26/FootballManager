@@ -35,7 +35,7 @@ namespace FootballManager.Controllers
         }
 
         // ===== NHẬP CHỈ SỐ THI ĐẤU =====
-        [Authorize(Roles = "Admin,Coach")]
+        [Authorize(Roles = "Admin,Coach,Analyst")]
         public async Task<IActionResult> MatchStats(int playerId, int? matchId)
         {
             var vm = await _service.GetMatchStatsFormAsync(playerId, matchId);
@@ -45,7 +45,7 @@ namespace FootballManager.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Coach")]
+        [Authorize(Roles = "Admin,Coach,Analyst")]
         public async Task<IActionResult> MatchStats(PlayerMatchStatsFormViewModel model)
         {
             if (!ModelState.IsValid)

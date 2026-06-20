@@ -42,6 +42,12 @@ namespace FootballManager.Controllers
                 return View(model);
             }
 
+            if (!user.IsActive)
+            {
+                ModelState.AddModelError("", "Tài khoản đã bị vô hiệu hóa. Liên hệ quản trị viên.");
+                return View(model);
+            }
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -66,7 +72,12 @@ namespace FootballManager.Controllers
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
-            return RedirectToAction("Index", "Dashboard");
+            // Redirect theo role
+            return user.Role switch
+            {
+                "Player" => RedirectToAction("Portal", "User"),
+                _        => RedirectToAction("Index", "Dashboard")
+            };
         }
 
         [HttpPost]

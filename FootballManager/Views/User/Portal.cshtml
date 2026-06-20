@@ -1,0 +1,151 @@
+@model FootballManager.ViewModels.PlayerPortalViewModel
+@{
+    ViewData["Title"] = "Trang cá nhân";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <span class="fs-5 fw-semibold">
+        <i class="bi bi-person-circle me-2 text-success"></i>Xin chào, @Model.FullName
+    </span>
+    <span class="badge @Model.HealthBadge fs-6">@Model.HealthStatusLabel</span>
+</div>
+
+@* Thông tin cá nhân *@
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-center">
+            <div class="col-auto">
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center fw-bold"
+                     style="width:64px;height:64px;font-size:1.5rem">
+                    @(Model.JerseyNumber?.ToString() ?? "?")
+                </div>
+            </div>
+            <div class="col">
+                <h5 class="mb-0">@Model.FullName</h5>
+                <span class="text-muted">@Model.PositionLabel — @Model.TeamName</span>
+            </div>
+            <div class="col-auto d-flex gap-3 text-center">
+                <div>
+                    <div class="fs-4 fw-bold text-success">
+                        @(Model.LastCoachRating.HasValue ? $"{Model.LastCoachRating:0.#}" : "—")
+                    </div>
+                    <div class="small text-muted">Điểm HLV gần nhất</div>
+                </div>
+                <div>
+                    <div class="fs-4 fw-bold text-primary">
+                        @(Model.AvgCoachRating.HasValue ? $"{Model.AvgCoachRating:0.#}" : "—")
+                    </div>
+                    <div class="small text-muted">Điểm TB</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    @* Lịch buổi tập sắp tới *@
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-calendar-check me-2 text-primary"></i>
+                Buổi tập sắp tới (7 ngày)
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.UpcomingSessions.Any())
+                {
+                    <p class="text-muted p-3 mb-0">
+                        <i class="bi bi-calendar-x me-2"></i>Không có buổi tập nào trong 7 ngày tới.
+                    </p>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var s in Model.UpcomingSessions)
+                        {
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="fw-semibold">@s.Title</div>
+                                        <div class="small text-muted">
+                                            <i class="bi bi-clock me-1"></i>@s.ScheduledAt.ToString("HH:mm — dd/MM/yyyy")
+                                            @if (!string.IsNullOrEmpty(s.Location))
+                                            {
+                                                <span class="ms-2"><i class="bi bi-geo-alt me-1"></i>@s.Location</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <span class="badge @s.MyStatusBadge">@s.MyStatus</span>
+                                </div>
+                                <div class="mt-2">
+                                    <a asp-controller="Calendar" asp-action="Attendance"
+                                       asp-route-id="@s.SessionId"
+                                       class="btn btn-xs btn-outline-primary py-0 px-2">
+                                        <i class="bi bi-clipboard-check me-1"></i>Xem điểm danh
+                                    </a>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Điểm danh gần nhất *@
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-clipboard-data me-2 text-success"></i>
+                Lịch sử điểm danh
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.RecentAttendances.Any())
+                {
+                    <p class="text-muted p-3 mb-0">Chưa có dữ liệu điểm danh.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Buổi tập</th>
+                                    <th>Ngày</th>
+                                    <th class="text-center">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in Model.RecentAttendances)
+                                {
+                                    <tr>
+                                        <td class="small fw-semibold">@a.SessionTitle</td>
+                                        <td class="small text-muted">@a.Date.ToString("dd/MM/yyyy")</td>
+                                        <td class="text-center">
+                                            <span class="badge @a.StatusBadge small">@a.Status</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            @if (Model.RecentAttendances.Any())
+            {
+                <div class="card-footer bg-transparent small text-muted">
+                    Có mặt: <b class="text-success">@Model.RecentAttendances.Count(a => a.Status == "Có mặt")</b>
+                    | Vắng: <b class="text-danger">@Model.RecentAttendances.Count(a => a.Status == "Vắng mặt")</b>
+                    | Xin phép: <b class="text-info">@Model.RecentAttendances.Count(a => a.Status == "Xin phép")</b>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* Link xem chỉ số cá nhân *@
+<div class="mt-4">
+    <a asp-controller="PlayerStats" asp-action="Index" asp-route-playerId="@Model.PlayerId"
+       class="btn btn-outline-success">
+        <i class="bi bi-graph-up me-2"></i>Xem biểu đồ phong độ & chỉ số
+    </a>
+</div>

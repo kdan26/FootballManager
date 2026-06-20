@@ -1,0 +1,105 @@
+@model FootballManager.ViewModels.UserCreateViewModel
+@{
+    ViewData["Title"] = "Tạo tài khoản";
+}
+
+<div class="d-flex align-items-center mb-3 gap-2">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <span class="fs-5 fw-semibold"><i class="bi bi-person-plus me-2 text-primary"></i>Tạo tài khoản mới</span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header bg-primary text-white">Thông tin tài khoản</div>
+            <div class="card-body">
+                <form asp-action="Create" method="post">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="All" class="alert alert-danger py-2"
+                         style="display:@(ViewData.ModelState.IsValid ? "none" : "block")"></div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label fw-semibold"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Username" class="form-label fw-semibold"></label>
+                            <input asp-for="Username" class="form-control" placeholder="Chỉ dùng chữ, số, _, ." />
+                            <span asp-validation-for="Username" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label asp-for="Password" class="form-label fw-semibold"></label>
+                            <input asp-for="Password" type="password" class="form-control" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Role" class="form-label fw-semibold"></label>
+                            <select asp-for="Role" class="form-select" id="roleSelect">
+                                <option value="Admin">👑 Quản trị (Admin)</option>
+                                <option value="Coach">🏋️ Huấn luyện viên (Coach)</option>
+                                <option value="Analyst">📊 Chuyên viên phân tích (Analyst)</option>
+                                <option value="Player">⚽ Cầu thủ (Player)</option>
+                                <option value="Member">👁️ Thành viên (Member)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="playerSection" style="display:none" class="mb-3">
+                        <label asp-for="PlayerId" class="form-label fw-semibold"></label>
+                        <select asp-for="PlayerId" class="form-select">
+                            <option value="">-- Chọn cầu thủ --</option>
+                            @foreach (var p in Model.AvailablePlayers)
+                            {
+                                <option value="@p.Id">
+                                    [@p.TeamName] #@(p.JerseyNumber?.ToString() ?? "?") @p.FullName
+                                </option>
+                            }
+                        </select>
+                        <div class="form-text text-warning">
+                            <i class="bi bi-info-circle me-1"></i>Role Player phải liên kết với 1 cầu thủ
+                        </div>
+                    </div>
+
+                    <hr />
+                    <div class="p-3 rounded mb-3" id="roleDesc" style="background:#f8f9fa;font-size:0.875rem"></div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Tạo tài khoản
+                        </button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+    <script>
+        const roleDescs = {
+            'Admin':   '👑 <b>Toàn quyền</b> — tạo/sửa/xóa mọi thứ, quản lý tài khoản.',
+            'Coach':   '🏋️ <b>Huấn luyện viên</b> — nhập chỉ số, điểm danh, lên lịch tập, vẽ chiến thuật.',
+            'Analyst': '📊 <b>Chuyên viên phân tích</b> — nhập chỉ số thi đấu, xem tất cả báo cáo.',
+            'Player':  '⚽ <b>Cầu thủ</b> — xem dữ liệu cá nhân, lịch tập, điểm danh của bản thân.',
+            'Member':  '👁️ <b>Thành viên</b> — chỉ xem, không chỉnh sửa.'
+        };
+        const roleSelect    = document.getElementById('roleSelect');
+        const playerSection = document.getElementById('playerSection');
+        const roleDesc      = document.getElementById('roleDesc');
+
+        function updateRole() {
+            const r = roleSelect.value;
+            playerSection.style.display = r === 'Player' ? 'block' : 'none';
+            roleDesc.innerHTML = roleDescs[r] || '';
+        }
+        roleSelect.addEventListener('change', updateRole);
+        updateRole();
+    </script>
+}

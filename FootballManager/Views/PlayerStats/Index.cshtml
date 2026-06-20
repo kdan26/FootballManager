@@ -1,6 +1,5 @@
 @using FootballManager.Models
 @using FootballManager.ViewModels
-@using System.Text.Json
 @{
     ViewData["Title"] = "Chỉ số cầu thủ";
     var player = ViewBag.Player as PlayerDetailsViewModel;
@@ -27,19 +26,8 @@
         _ => ""
     };
 
-    // Serialize chart data cho JS
-    var jsOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-    string trainingLabels   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.Label), jsOptions);
-    string coachRatings     = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.CoachRating), jsOptions);
-    string physicalScores   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.PhysicalScore), jsOptions);
-    string technicalScores  = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.TechnicalScore), jsOptions);
-    string tacticalScores   = JsonSerializer.Serialize(chart.TrainingPoints.Select(p => p.TacticalScore), jsOptions);
-
-    string matchLabels      = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.Label), jsOptions);
-    string passCompletion   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.PassCompletionPct), jsOptions);
-    string keyMetric1Data   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.KeyMetric1), jsOptions);
+    // Chart data serialize trực tiếp inline trong JS section
     string keyMetric1Label  = chart.MatchPoints.FirstOrDefault()?.KeyMetric1Label ?? "";
-    string keyMetric2Data   = JsonSerializer.Serialize(chart.MatchPoints.Select(p => p.KeyMetric2), jsOptions);
     string keyMetric2Label  = chart.MatchPoints.FirstOrDefault()?.KeyMetric2Label ?? "";
 }
 
@@ -342,17 +330,17 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    const trainingLabels  = @Html.Raw(trainingLabels);
-    const coachRatings    = @Html.Raw(coachRatings);
-    const physicalScores  = @Html.Raw(physicalScores);
-    const technicalScores = @Html.Raw(technicalScores);
-    const tacticalScores  = @Html.Raw(tacticalScores);
+    const trainingLabels  = @Json.Serialize(chart.TrainingPoints.Select(p => p.Label).ToList());
+    const coachRatings    = @Json.Serialize(chart.TrainingPoints.Select(p => p.CoachRating).ToList());
+    const physicalScores  = @Json.Serialize(chart.TrainingPoints.Select(p => p.PhysicalScore).ToList());
+    const technicalScores = @Json.Serialize(chart.TrainingPoints.Select(p => p.TechnicalScore).ToList());
+    const tacticalScores  = @Json.Serialize(chart.TrainingPoints.Select(p => p.TacticalScore).ToList());
 
-    const matchLabels     = @Html.Raw(matchLabels);
-    const passCompletion  = @Html.Raw(passCompletion);
-    const keyMetric1      = @Html.Raw(keyMetric1Data);
+    const matchLabels     = @Json.Serialize(chart.MatchPoints.Select(p => p.Label).ToList());
+    const passCompletion  = @Json.Serialize(chart.MatchPoints.Select(p => p.PassCompletionPct).ToList());
+    const keyMetric1      = @Json.Serialize(chart.MatchPoints.Select(p => p.KeyMetric1).ToList());
     const keyMetric1Lbl   = @Json.Serialize(keyMetric1Label);
-    const keyMetric2      = @Html.Raw(keyMetric2Data);
+    const keyMetric2      = @Json.Serialize(chart.MatchPoints.Select(p => p.KeyMetric2).ToList());
     const keyMetric2Lbl   = @Json.Serialize(keyMetric2Label);
 
     // ── Biểu đồ 1: Phong độ tập luyện ──

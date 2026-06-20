@@ -1,7 +1,7 @@
 @model List<FootballManager.ViewModels.PlayerListItemViewModel>
 @{
     ViewData["Title"] = "Bảng chiến thuật";
-    int teamId       = (int)ViewBag.TeamId;
+    int teamId       = (int)(ViewBag.TeamId ?? 0);
     string formation = ViewBag.Formation as string ?? "4-3-3";
     string notes     = ViewBag.Notes     as string ?? "";
     string posJson   = ViewBag.PositionsJson as string ?? "[]";
@@ -138,11 +138,16 @@
     // ════════════════════════════════════════════
     //  DỮ LIỆU BAN ĐẦU từ server
     // ════════════════════════════════════════════
-    const TEAM_ID     = @teamId;
-    const TOKEN       = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
-    let formation     = @Json.Serialize(formation);
-    let positions     = JSON.parse(@Json.Serialize(posJson));
-    let arrows        = JSON.parse(@Json.Serialize(arrowJson));
+    // Anti-forgery token — insert vào DOM ngay để TOKEN đọc được
+    document.body.insertAdjacentHTML('beforeend',
+        `<form id="__afForm" style="display:none">@Html.AntiForgeryToken()</form>`);
+
+    const TEAM_ID = @teamId;
+    // Đọc TOKEN sau khi form đã có trong DOM
+    const TOKEN = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+    let formation = @Json.Serialize(formation);
+    let positions = JSON.parse(@Json.Serialize(posJson));
+    let arrows    = JSON.parse(@Json.Serialize(arrowJson));
     let history       = [];                      // undo stack
 
     // ════════════════════════════════════════════
@@ -479,15 +484,12 @@
     //  KHỞI TẠO
     // ════════════════════════════════════════════
     if (positions.length === 0 && @Model.Count > 0) {
-        // Chưa có data — đặt cầu thủ vào vị trí mặc định
-        const players = @Html.Raw(
-            System.Text.Json.JsonSerializer.Serialize(
-                Model.Where(p => p.IsActive).Take(11).Select((p,i) => new {
-                    id = p.Id,
-                    name = p.FullName.Split(' ').Last(),
-                    jerseyNumber = p.JerseyNumber?.ToString() ?? "?"
-                })
-            )
+        const players = @Json.Serialize(
+            Model.Where(p => p.IsActive).Take(11).Select((p, i) => new {
+                id           = p.Id,
+                name         = p.FullName.Split(' ').Last(),
+                jerseyNumber = p.JerseyNumber != null ? p.JerseyNumber.ToString() : "?"
+            }).ToList()
         );
         const coords = FORMATIONS[formation] || FORMATIONS['4-3-3'];
         positions = players.map((p, i) => ({
@@ -498,10 +500,6 @@
     }
 
     render();
-
-    // Cần anti-forgery token — thêm hidden input
-    document.body.insertAdjacentHTML('beforeend',
-        `<form id="__afForm" style="display:none">@Html.AntiForgeryToken()</form>`);
 
 })();
 </script>

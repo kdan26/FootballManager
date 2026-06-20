@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Lịch thi đấu & tập luyện";
     var teams = ViewBag.Teams as List<TeamListItemViewModel> ?? new();
-    int? selectedTeamId = ViewBag.TeamId as int?;
+    int? selectedTeamId = ViewBag.TeamId != null ? (int?)ViewBag.TeamId : null;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -54,8 +54,11 @@
     </div>
 </div>
 
-@section Scripts {
+@section Styles {
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" />
+}
+
+@section Scripts {
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/vi.global.min.js"></script>
 <script>

@@ -39,6 +39,20 @@ namespace FootballManager.Data
                 .HasForeignKey(m => m.AwayTeamId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // User → Player (optional FK cho role Player)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.PlayerProfile)
+                .WithMany()
+                .HasForeignKey(u => u.PlayerId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
+
+            // Unique: mỗi Player chỉ link với 1 tài khoản
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.PlayerId)
+                .IsUnique()
+                .HasFilter("[PlayerId] IS NOT NULL");
+
             // Unique index cho Team.Name
             modelBuilder.Entity<Team>()
                 .HasIndex(t => t.Name)

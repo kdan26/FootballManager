@@ -13,7 +13,7 @@
                 <i class="bi bi-pencil me-1"></i>Sửa
             </a>
             <form asp-action="Delete" asp-route-id="@Model.Id" method="post"
-                  onsubmit="return confirm('Xóa đội \'@Model.Name\'?\n\nHành động này sẽ xóa TOÀN BỘ:\n• @Model.Matches.Count trận đấu\n• Tất cả cầu thủ và dữ liệu liên quan\n• Lịch tập, điểm danh, chỉ số\n\nKhông thể hoàn tác!')">
+                  onsubmit="return confirm('Xóa đội \'@Model.Name\'?\n\nHành động này sẽ xóa TOÀN BỘ:\n• @(Model.Matches?.Count ?? 0) trận đấu\n• Tất cả cầu thủ và dữ liệu liên quan\n• Lịch tập, điểm danh, chỉ số\n\nKhông thể hoàn tác!')">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-outline-danger btn-sm">
                     <i class="bi bi-trash me-1"></i>Xóa đội

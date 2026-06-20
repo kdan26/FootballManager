@@ -22,6 +22,7 @@ builder.Services.AddScoped<FootballManager.Services.IPerformanceRatingService, F
 builder.Services.AddScoped<FootballManager.Services.IDrillService, FootballManager.Services.DrillService>();
 builder.Services.AddScoped<FootballManager.Services.ITrainingSessionService, FootballManager.Services.TrainingSessionService>();
 builder.Services.AddScoped<FootballManager.Services.ICalendarService, FootballManager.Services.CalendarService>();
+builder.Services.AddScoped<FootballManager.Services.IUserService, FootballManager.Services.UserService>();
 
 // Cookie Authentication
 builder.Services.AddAuthentication("CookieAuth")
