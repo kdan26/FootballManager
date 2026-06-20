@@ -74,10 +74,13 @@
             </div>
         </div>
 
-        @* Danh sách cầu thủ (kéo thả lên sân) *@
+        @* Danh sách cầu thủ (kéo thả hoặc bấm để thêm/xóa khỏi sân) *@
         <div class="card">
             <div class="card-header fw-semibold small">
                 <i class="bi bi-people me-1"></i>Cầu thủ
+                <span class="text-muted fw-normal ms-1" style="font-size:0.7rem">
+                    — bấm để thêm/xóa, kéo để đặt vị trí
+                </span>
             </div>
             <div class="card-body p-2" style="max-height:320px;overflow-y:auto">
                 @foreach (var p in Model.Where(x => x.IsActive))
@@ -91,8 +94,8 @@
                         or FootballManager.Models.PlayerPosition.CentralMid=> "bg-primary",
                         _                                                   => "bg-danger"
                     };
-                    <div class="player-chip d-flex align-items-center gap-2 p-1 mb-1 rounded border bg-white"
-                         style="cursor:grab"
+                    <div class="player-chip d-flex align-items-center gap-2 p-1 mb-1 rounded border"
+                         style="cursor:pointer;transition:background 0.15s"
                          data-id="@p.Id"
                          data-name="@p.FullName.Split(' ').Last()"
                          data-jersey="@(p.JerseyNumber?.ToString() ?? "?")"
@@ -101,7 +104,8 @@
                              style="width:28px;height:28px;font-size:0.75rem;flex-shrink:0">
                             @(p.JerseyNumber?.ToString() ?? "?")
                         </div>
-                        <span class="small">@p.FullName</span>
+                        <span class="small flex-grow-1">@p.FullName</span>
+                        <i class="bi bi-check-circle-fill text-success chip-check" style="display:none;font-size:0.8rem"></i>
                     </div>
                 }
             </div>
@@ -315,6 +319,18 @@
     canvas.addEventListener('mousedown', onDown);
     canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, {passive:false});
 
+    // Double-click trên canvas → xóa cầu thủ tại vị trí đó
+    canvas.addEventListener('dblclick', e => {
+        const {x, y} = getPos(e);
+        const idx = hitPlayer(x, y);
+        if (idx >= 0) {
+            history.push(JSON.parse(JSON.stringify(positions)));
+            positions.splice(idx, 1);
+            render();
+            syncChips();
+        }
+    });
+
     function onDown(e) {
         const {x, y} = getPos(e);
 
@@ -368,13 +384,69 @@
     }
 
     // ════════════════════════════════════════════
-    //  DRAG từ danh sách bên trái lên canvas
+    //  SYNC HIGHLIGHT CHIP theo positions
+    // ════════════════════════════════════════════
+    function syncChips() {
+        const onField = new Set(positions.map(p => p.id));
+        document.querySelectorAll('.player-chip').forEach(chip => {
+            const id = parseInt(chip.dataset.id);
+            const onSan = onField.has(id);
+            chip.style.background     = onSan ? '#d1fae5' : 'white'; // xanh nhạt nếu đang trên sân
+            chip.style.borderColor    = onSan ? '#10b981' : '';
+            chip.querySelector('.chip-check').style.display = onSan ? 'inline' : 'none';
+        });
+    }
+
+    // ════════════════════════════════════════════
+    //  CLICK CHIP: thêm/xóa cầu thủ khỏi sân
     // ════════════════════════════════════════════
     document.querySelectorAll('.player-chip').forEach(chip => {
+        // Click = toggle
+        chip.addEventListener('click', () => {
+            const pid     = parseInt(chip.dataset.id);
+            const pname   = chip.dataset.name;
+            const pjersey = chip.dataset.jersey;
+
+            const idx = positions.findIndex(p => p.id === pid);
+            history.push(JSON.parse(JSON.stringify(positions)));
+
+            if (idx >= 0) {
+                // Đã có trên sân → xóa ra
+                positions.splice(idx, 1);
+            } else {
+                // Chưa có → thêm vào vị trí trống tiếp theo theo formation
+                const coords  = FORMATIONS[formation] || FORMATIONS['4-3-3'];
+                const usedIdx = new Set(
+                    positions.map((_, i) => i) // lấy chỉ số đã dùng không đủ — cần cách khác
+                );
+                // Tìm slot formation chưa có cầu thủ
+                let placed = false;
+                for (let i = 0; i < coords.length; i++) {
+                    const cx = coords[i][0], cy = coords[i][1];
+                    const slotTaken = positions.some(p =>
+                        Math.hypot(p.x - cx, p.y - cy) < R * 2.5
+                    );
+                    if (!slotTaken) {
+                        positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x: cx, y: cy });
+                        placed = true;
+                        break;
+                    }
+                }
+                // Không còn slot trống → đặt giữa sân
+                if (!placed) {
+                    positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x: W/2, y: H/2 });
+                }
+            }
+
+            render();
+            syncChips();
+        });
+
+        // Drag vẫn giữ nguyên
         chip.addEventListener('dragstart', e => {
-            e.dataTransfer.setData('playerId',      chip.dataset.id);
-            e.dataTransfer.setData('playerName',    chip.dataset.name);
-            e.dataTransfer.setData('playerJersey',  chip.dataset.jersey);
+            e.dataTransfer.setData('playerId',     chip.dataset.id);
+            e.dataTransfer.setData('playerName',   chip.dataset.name);
+            e.dataTransfer.setData('playerJersey', chip.dataset.jersey);
         });
     });
 
@@ -394,6 +466,7 @@
             positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x, y });
         }
         render();
+        syncChips();
     });
 
     // ════════════════════════════════════════════
@@ -418,6 +491,7 @@
         if (!confirm('Xếp lại cầu thủ về vị trí mặc định?')) return;
         history.push(JSON.parse(JSON.stringify(positions)));
         applyFormation(document.getElementById('formationSelect').value);
+        syncChips();
     });
 
     document.getElementById('btnSave').addEventListener('click', async () => {
@@ -500,6 +574,7 @@
     }
 
     render();
+    syncChips();
 
 })();
 </script>
