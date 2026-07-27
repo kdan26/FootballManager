@@ -2,14 +2,14 @@
 @using FootballManager.Models
 @{
     ViewData["Title"] = $"{Model.HomeTeamName} vs {Model.AwayTeamName}";
-    var badge = Model.Status switch
+    string statusColor = Model.Status switch
     {
-        MatchStatus.Scheduled => "bg-primary",
-        MatchStatus.Completed => "bg-success",
-        MatchStatus.Cancelled => "bg-secondary",
-        _ => "bg-secondary"
+        MatchStatus.Scheduled => "var(--fm-info)",
+        MatchStatus.Completed => "var(--fm-accent)",
+        MatchStatus.Cancelled => "var(--fm-text-muted)",
+        _ => "var(--fm-text-muted)"
     };
-    var label = Model.Status switch
+    string statusLabel = Model.Status switch
     {
         MatchStatus.Scheduled => "Sắp diễn ra",
         MatchStatus.Completed => "Đã kết thúc",
@@ -18,100 +18,117 @@
     };
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4><i class="bi bi-calendar-event me-2 text-success"></i>Chi tiết trận đấu</h4>
-    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-1"></i>Quay lại
-    </a>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h4 class="page-title mb-0">Chi tiết trận đấu</h4>
+    </div>
+    <span class="badge fs-6" style="background:@(statusColor)22;color:@statusColor;border:1px solid @(statusColor)44">
+        @statusLabel
+    </span>
 </div>
 
 @if (TempData["Error"] != null)
 {
     <div class="alert alert-danger alert-dismissible fade show">
-        @TempData["Error"]
+        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 }
 
-<div class="card mb-4">
-    <div class="card-body">
-        @if (Model.Status == MatchStatus.Completed)
-        {
-            <div class="text-center py-3">
-                <div class="d-flex justify-content-center align-items-center gap-4">
-                    <span class="fs-4 fw-bold">@Model.HomeTeamName</span>
-                    <span class="display-4 fw-bold text-success">@Model.HomeScore - @Model.AwayScore</span>
-                    <span class="fs-4 fw-bold">@Model.AwayTeamName</span>
-                </div>
+@* Scoreboard *@
+<div class="card mb-4" style="border-top: 4px solid @statusColor">
+    <div class="card-body py-4">
+        <div class="row align-items-center text-center g-3">
+            <div class="col-5">
+                <div class="fw-bold fs-4">@Model.HomeTeamName</div>
+                <div class="text-muted small">Đội nhà</div>
             </div>
-        }
-        else
-        {
-            <div class="text-center py-3">
-                <div class="d-flex justify-content-center align-items-center gap-4">
-                    <span class="fs-4 fw-bold">@Model.HomeTeamName</span>
-                    <span class="fs-3 text-muted">vs</span>
-                    <span class="fs-4 fw-bold">@Model.AwayTeamName</span>
-                </div>
+            <div class="col-2">
+                @if (Model.Status == MatchStatus.Completed)
+                {
+                    <div class="fw-black" style="font-size:2.5rem;color:var(--fm-accent);line-height:1">
+                        @Model.HomeScore–@Model.AwayScore
+                    </div>
+                    <div class="text-muted small mt-1">Kết quả</div>
+                }
+                else
+                {
+                    <div class="fs-3 text-muted fw-bold">vs</div>
+                    <div class="mt-1">
+                        <span class="badge" style="background:@(statusColor)22;color:@statusColor">@statusLabel</span>
+                    </div>
+                }
             </div>
-        }
+            <div class="col-5">
+                <div class="fw-bold fs-4">@Model.AwayTeamName</div>
+                <div class="text-muted small">Đội khách</div>
+            </div>
+        </div>
 
-        <hr />
+        <hr style="border-color:var(--fm-border)" />
 
-        <dl class="row mb-0">
-            <dt class="col-sm-3">Ngày thi đấu</dt>
-            <dd class="col-sm-9">@Model.MatchDate.ToString("dd/MM/yyyy HH:mm")</dd>
-
-            <dt class="col-sm-3">Địa điểm</dt>
-            <dd class="col-sm-9">@(Model.Venue ?? "-")</dd>
-
-            <dt class="col-sm-3">Trạng thái</dt>
-            <dd class="col-sm-9"><span class="badge @badge">@label</span></dd>
-
+        <div class="row g-3 text-center">
+            <div class="col-6 col-md-3">
+                <div class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:0.4px">Ngày</div>
+                <div class="fw-semibold">@Model.MatchDate.ToString("dd/MM/yyyy")</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:0.4px">Giờ</div>
+                <div class="fw-semibold" style="color:var(--fm-gold)">@Model.MatchDate.ToString("HH:mm")</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:0.4px">Địa điểm</div>
+                <div class="fw-semibold">@(Model.Venue ?? "—")</div>
+            </div>
             @if (!string.IsNullOrEmpty(Model.Notes))
             {
-                <dt class="col-sm-3">Ghi chú</dt>
-                <dd class="col-sm-9">@Model.Notes</dd>
+                <div class="col-6 col-md-3">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1" style="letter-spacing:0.4px">Ghi chú</div>
+                    <div class="small">@Model.Notes</div>
+                </div>
             }
-        </dl>
+        </div>
     </div>
 </div>
 
-<div class="mb-3">
+@* Actions *@
+<div class="d-flex gap-2 flex-wrap mb-4">
     <a asp-controller="MatchEvent" asp-action="Index" asp-route-matchId="@Model.Id"
-       class="btn btn-outline-warning">
-        <i class="bi bi-lightning-charge me-1"></i>Xem sự kiện trận đấu
+       class="btn btn-outline-warning btn-sm">
+        <i class="bi bi-lightning-charge me-1"></i>Sự kiện trận đấu
     </a>
-</div>
 
-@if (Model.Status == MatchStatus.Scheduled)
-{
-    <div class="d-flex gap-2 flex-wrap">
+    @if (Model.Status == MatchStatus.Scheduled)
+    {
         @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
         {
-            <a asp-action="UpdateResult" asp-route-id="@Model.Id" class="btn btn-success">
+            <a asp-action="UpdateResult" asp-route-id="@Model.Id"
+               class="btn btn-success btn-sm">
                 <i class="bi bi-trophy me-1"></i>Cập nhật kết quả
             </a>
             <a asp-controller="Attendance" asp-action="Match"
                asp-route-id="@Model.Id" asp-route-teamId="@Model.HomeTeamId"
-               class="btn btn-outline-info">
-                <i class="bi bi-clipboard-check me-1"></i>Điểm danh (@Model.HomeTeamName)
+               class="btn btn-outline-info btn-sm">
+                <i class="bi bi-clipboard-check me-1"></i>Điểm danh @Model.HomeTeamName
             </a>
             <a asp-controller="Attendance" asp-action="Match"
                asp-route-id="@Model.Id" asp-route-teamId="@Model.AwayTeamId"
-               class="btn btn-outline-info">
-                <i class="bi bi-clipboard-check me-1"></i>Điểm danh (@Model.AwayTeamName)
+               class="btn btn-outline-info btn-sm">
+                <i class="bi bi-clipboard-check me-1"></i>Điểm danh @Model.AwayTeamName
             </a>
         }
         @if (User.IsInRole("Admin"))
         {
             <form asp-action="Cancel" asp-route-id="@Model.Id" method="post"
-                  onsubmit="return confirm('Bạn có chắc muốn hủy trận đấu này?')">
+                  onsubmit="return confirm('Hủy trận đấu này?')">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-outline-danger">
+                <button type="submit" class="btn btn-outline-danger btn-sm">
                     <i class="bi bi-x-circle me-1"></i>Hủy trận
                 </button>
             </form>
         }
-    </div>
-}
+    }
+</div>

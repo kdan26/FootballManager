@@ -20,5 +20,6 @@ namespace FootballManager.Services
         Task SaveTacticsBoardAsync(int teamId, string formation, string? notes,
             string? positionsJson, string? arrowsJson);
         Task<TeamTactics?> GetTacticsAsync(int teamId);
+        Task<string?> SavePlayerPhotoAsync(int playerId, IFormFile photo, string webRootPath);
     }
 }

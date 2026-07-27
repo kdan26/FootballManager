@@ -99,6 +99,7 @@
                          data-id="@p.Id"
                          data-name="@p.FullName.Split(' ').Last()"
                          data-jersey="@(p.JerseyNumber?.ToString() ?? "?")"
+                         data-photo="@(p.PhotoUrl ?? "")"
                          draggable="true">
                         <div class="rounded-circle text-white d-flex align-items-center justify-content-center fw-bold @posBadge"
                              style="width:28px;height:28px;font-size:0.75rem;flex-shrink:0">
@@ -207,11 +208,11 @@
     // ════════════════════════════════════════════
     //  VẼ MŨI TÊN
     // ════════════════════════════════════════════
-    function drawArrow(x1, y1, x2, y2, color, dash) {
+    function drawArrow(x1, y1, x2, y2, color, dash, lw = 2.5) {
         ctx.save();
         ctx.strokeStyle = color;
         ctx.fillStyle   = color;
-        ctx.lineWidth   = 2.5;
+        ctx.lineWidth   = lw;
         ctx.setLineDash(dash === 'dashed' ? [8,4] : []);
 
         ctx.beginPath();
@@ -234,44 +235,91 @@
     }
 
     // ════════════════════════════════════════════
+    //  CACHE ẢNH
+    // ════════════════════════════════════════════
+    const imgCache = {};
+
+    function loadImage(url) {
+        if (!url) return Promise.resolve(null);
+        if (imgCache[url]) return Promise.resolve(imgCache[url]);
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload  = () => { imgCache[url] = img; resolve(img); };
+            img.onerror = () => resolve(null);
+            img.src = url;
+        });
+    }
+
+    // ════════════════════════════════════════════
     //  VẼ CẦU THỦ
     // ════════════════════════════════════════════
     function drawPlayer(p) {
-        // Chọn màu theo loại vị trí (dựa trên tên)
         ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur  = 6;
+
+        // Vẽ circle nền
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, R, 0, Math.PI * 2);
         ctx.fillStyle   = '#1a56db';
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth   = 2;
-        ctx.shadowColor = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur  = 4;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, R, 0, Math.PI*2);
-        ctx.fill(); ctx.stroke();
+        ctx.fill();
+        ctx.stroke();
         ctx.shadowBlur = 0;
 
-        // Số áo
-        ctx.fillStyle   = 'white';
-        ctx.font        = `bold 11px sans-serif`;
-        ctx.textAlign   = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(p.jerseyNumber, p.x, p.y - 2);
+        // Nếu có ảnh đã cache → clip vẽ ảnh
+        const img = p.photoUrl ? imgCache[p.photoUrl] : null;
+        if (img) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, R - 1, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(img, p.x - R + 1, p.y - R + 1, (R - 1) * 2, (R - 1) * 2);
+            ctx.restore();
+        } else {
+            // Fallback: số áo
+            ctx.fillStyle    = 'white';
+            ctx.font         = `bold 11px sans-serif`;
+            ctx.textAlign    = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(p.jerseyNumber, p.x, p.y - 1);
+        }
 
-        // Tên
+        // Tên cầu thủ dưới icon
         ctx.font        = `10px sans-serif`;
         ctx.fillStyle   = 'white';
-        ctx.shadowColor = 'black'; ctx.shadowBlur = 3;
-        ctx.fillText(p.name.substring(0,8), p.x, p.y + R + 10);
+        ctx.shadowColor = 'black';
+        ctx.shadowBlur  = 3;
+        ctx.textAlign   = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.name.substring(0, 8), p.x, p.y + R + 10);
 
         ctx.restore();
+    }
+
+    // Preload ảnh rồi render
+    async function preloadAndRender() {
+        const urls = [...new Set(positions.map(p => p.photoUrl).filter(Boolean))];
+        await Promise.all(urls.map(loadImage));
+        render();
     }
 
     // ════════════════════════════════════════════
     //  RENDER TOÀN BỘ
     // ════════════════════════════════════════════
-    function render() {
+    function render() { renderWithHighlight(-1); }
+
+    function renderWithHighlight(highlightIdx) {
         drawPitch();
-        arrows.forEach(a => drawArrow(a.x1, a.y1, a.x2, a.y2, a.color, a.dash));
+        arrows.forEach((a, i) => {
+            if (i === highlightIdx) {
+                // Highlight: nền đỏ mờ + đường dày hơn
+                drawArrow(a.x1, a.y1, a.x2, a.y2, '#ff4d6d', a.dash, 4);
+            } else {
+                drawArrow(a.x1, a.y1, a.x2, a.y2, a.color, a.dash, 2.5);
+            }
+        });
         positions.forEach(p => drawPlayer(p));
     }
 
@@ -316,6 +364,21 @@
         return positions.findIndex(p => Math.hypot(p.x - x, p.y - y) < R + 2);
     }
 
+    // Kiểm tra click có trúng mũi tên không (khoảng cách điểm đến đoạn thẳng)
+    function hitArrow(x, y) {
+        const THRESH = 8; // pixel
+        return arrows.findIndex(a => {
+            const dx = a.x2 - a.x1, dy = a.y2 - a.y1;
+            const len2 = dx * dx + dy * dy;
+            if (len2 === 0) return Math.hypot(x - a.x1, y - a.y1) < THRESH;
+            let t = ((x - a.x1) * dx + (y - a.y1) * dy) / len2;
+            t = Math.max(0, Math.min(1, t));
+            const px = a.x1 + t * dx - x;
+            const py = a.y1 + t * dy - y;
+            return Math.hypot(px, py) < THRESH;
+        });
+    }
+
     canvas.addEventListener('mousedown', onDown);
     canvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, {passive:false});
 
@@ -331,14 +394,40 @@
         }
     });
 
+    // Hover: đổi cursor khi di chuột qua mũi tên (chế độ move)
+    let hoveredArrow = -1;
+    canvas.addEventListener('mousemove', e => {
+        if (currentTool !== 'move' || dragging) return;
+        const {x, y} = getPos(e);
+        const idx = hitArrow(x, y);
+        if (idx !== hoveredArrow) {
+            hoveredArrow = idx;
+            canvas.style.cursor = idx >= 0 ? 'pointer' : 'default';
+            // Re-render để highlight
+            renderWithHighlight(hoveredArrow);
+        }
+    });
+
     function onDown(e) {
         const {x, y} = getPos(e);
 
         if (currentTool === 'move') {
-            const idx = hitPlayer(x, y);
-            if (idx >= 0) {
+            // Ưu tiên: kiểm tra trúng cầu thủ trước
+            const pidx = hitPlayer(x, y);
+            if (pidx >= 0) {
                 history.push(JSON.parse(JSON.stringify(positions)));
-                dragging = { index: idx, offX: positions[idx].x - x, offY: positions[idx].y - y };
+                dragging = { index: pidx, offX: positions[pidx].x - x, offY: positions[pidx].y - y };
+                return;
+            }
+            // Nếu không, kiểm tra trúng mũi tên → xóa
+            const aidx = hitArrow(x, y);
+            if (aidx >= 0) {
+                history.push(JSON.parse(JSON.stringify({positions, arrows})));
+                arrows.splice(aidx, 1);
+                hoveredArrow = -1;
+                canvas.style.cursor = 'default';
+                render();
+                return;
             }
         } else if (currentTool === 'arrow') {
             arrowStart = {x, y};
@@ -403,23 +492,18 @@
     document.querySelectorAll('.player-chip').forEach(chip => {
         // Click = toggle
         chip.addEventListener('click', () => {
-            const pid     = parseInt(chip.dataset.id);
-            const pname   = chip.dataset.name;
-            const pjersey = chip.dataset.jersey;
+            const pid      = parseInt(chip.dataset.id);
+            const pname    = chip.dataset.name;
+            const pjersey  = chip.dataset.jersey;
+            const pphoto   = chip.dataset.photo || '';
 
             const idx = positions.findIndex(p => p.id === pid);
             history.push(JSON.parse(JSON.stringify(positions)));
 
             if (idx >= 0) {
-                // Đã có trên sân → xóa ra
                 positions.splice(idx, 1);
             } else {
-                // Chưa có → thêm vào vị trí trống tiếp theo theo formation
-                const coords  = FORMATIONS[formation] || FORMATIONS['4-3-3'];
-                const usedIdx = new Set(
-                    positions.map((_, i) => i) // lấy chỉ số đã dùng không đủ — cần cách khác
-                );
-                // Tìm slot formation chưa có cầu thủ
+                const coords = FORMATIONS[formation] || FORMATIONS['4-3-3'];
                 let placed = false;
                 for (let i = 0; i < coords.length; i++) {
                     const cx = coords[i][0], cy = coords[i][1];
@@ -427,18 +511,19 @@
                         Math.hypot(p.x - cx, p.y - cy) < R * 2.5
                     );
                     if (!slotTaken) {
-                        positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x: cx, y: cy });
+                        positions.push({ id: pid, name: pname, jerseyNumber: pjersey,
+                                         photoUrl: pphoto, x: cx, y: cy });
                         placed = true;
                         break;
                     }
                 }
-                // Không còn slot trống → đặt giữa sân
                 if (!placed) {
-                    positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x: W/2, y: H/2 });
+                    positions.push({ id: pid, name: pname, jerseyNumber: pjersey,
+                                     photoUrl: pphoto, x: W/2, y: H/2 });
                 }
             }
 
-            render();
+            preloadAndRender();
             syncChips();
         });
 
@@ -447,6 +532,7 @@
             e.dataTransfer.setData('playerId',     chip.dataset.id);
             e.dataTransfer.setData('playerName',   chip.dataset.name);
             e.dataTransfer.setData('playerJersey', chip.dataset.jersey);
+            e.dataTransfer.setData('playerPhoto',  chip.dataset.photo || '');
         });
     });
 
@@ -456,6 +542,7 @@
         const pid     = parseInt(e.dataTransfer.getData('playerId'));
         const pname   = e.dataTransfer.getData('playerName');
         const pjersey = e.dataTransfer.getData('playerJersey');
+        const pphoto  = e.dataTransfer.getData('playerPhoto') || '';
         const {x, y}  = getPos(e);
 
         const existing = positions.findIndex(p => p.id === pid);
@@ -463,9 +550,10 @@
             positions[existing].x = x;
             positions[existing].y = y;
         } else {
-            positions.push({ id: pid, name: pname, jerseyNumber: pjersey, x, y });
+            positions.push({ id: pid, name: pname, jerseyNumber: pjersey,
+                             photoUrl: pphoto, x, y });
         }
-        render();
+        preloadAndRender();
         syncChips();
     });
 
@@ -530,7 +618,9 @@
             document.querySelectorAll('.tool-btn').forEach(x => x.classList.remove('active'));
             this.classList.add('active');
             currentTool = this.dataset.tool;
+            hoveredArrow = -1;
             canvas.style.cursor = currentTool === 'arrow' ? 'crosshair' : 'default';
+            render();
         });
     });
 
@@ -557,12 +647,21 @@
     // ════════════════════════════════════════════
     //  KHỞI TẠO
     // ════════════════════════════════════════════
+
+    // Bảng tra cứu photoUrl theo playerId — dùng để merge vào positions đã lưu
+    const photoLookup = @Json.Serialize(
+        Model.Where(p => p.IsActive)
+             .ToDictionary(p => p.Id.ToString(), p => p.PhotoUrl ?? "")
+    );
+
     if (positions.length === 0 && @Model.Count > 0) {
+        // Lần đầu — chưa có data → xếp theo formation
         const players = @Json.Serialize(
             Model.Where(p => p.IsActive).Take(11).Select((p, i) => new {
                 id           = p.Id,
                 name         = p.FullName.Split(' ').Last(),
-                jerseyNumber = p.JerseyNumber != null ? p.JerseyNumber.ToString() : "?"
+                jerseyNumber = p.JerseyNumber != null ? p.JerseyNumber.ToString() : "?",
+                photoUrl     = p.PhotoUrl ?? ""
             }).ToList()
         );
         const coords = FORMATIONS[formation] || FORMATIONS['4-3-3'];
@@ -571,9 +670,15 @@
             x: coords[i] ? coords[i][0] : W/2,
             y: coords[i] ? coords[i][1] : H/2
         }));
+    } else {
+        // Đã có data từ DB → merge photoUrl mới nhất vào positions cũ
+        positions = positions.map(p => ({
+            ...p,
+            photoUrl: photoLookup[String(p.id)] ?? p.photoUrl ?? ''
+        }));
     }
 
-    render();
+    preloadAndRender();
     syncChips();
 
 })();

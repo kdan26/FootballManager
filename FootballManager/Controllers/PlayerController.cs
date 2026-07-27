@@ -9,12 +9,15 @@ namespace FootballManager.Controllers
     public class PlayerController : Controller
     {
         private readonly IPlayerService _playerService;
-        private readonly ITeamService _teamService;
+        private readonly ITeamService   _teamService;
+        private readonly IWebHostEnvironment _env;
 
-        public PlayerController(IPlayerService playerService, ITeamService teamService)
+        public PlayerController(IPlayerService playerService, ITeamService teamService,
+            IWebHostEnvironment env)
         {
             _playerService = playerService;
-            _teamService = teamService;
+            _teamService   = teamService;
+            _env           = env;
         }
 
         // GET /Player?teamId=1
@@ -121,6 +124,45 @@ namespace FootballManager.Controllers
                 TempData["Error"] = error;
 
             return RedirectToAction(nameof(Index), new { teamId });
+        }
+
+        // POST /Player/UploadPhoto/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Coach")]
+        public async Task<IActionResult> UploadPhoto(int id, IFormFile photo)
+        {
+            if (photo == null || photo.Length == 0)
+            {
+                TempData["Error"] = "Vui lòng chọn file ảnh";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // Giới hạn 2MB
+            if (photo.Length > 2 * 1024 * 1024)
+            {
+                TempData["Error"] = "Ảnh không được vượt quá 2MB";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            try
+            {
+                var url = await _playerService.SavePlayerPhotoAsync(id, photo, _env.WebRootPath);
+                if (url == null)
+                {
+                    TempData["Error"] = "Định dạng không hợp lệ. Chỉ chấp nhận JPG, PNG, WEBP";
+                }
+                else
+                {
+                    TempData["Success"] = "Đã cập nhật ảnh đại diện";
+                }
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"Lỗi upload: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
         }
     }
 }

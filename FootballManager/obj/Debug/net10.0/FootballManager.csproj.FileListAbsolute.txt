@@ -439,7 +439,6 @@ E:\FootballManager\FootballManager\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
 E:\FootballManager\FootballManager\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
 E:\FootballManager\FootballManager\obj\Debug\net10.0\scopedcss\bundle\FootballManager.styles.css
 E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\tkosgko9sz-{0}-dyjx89twm7-dyjx89twm7.gz
-E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\vg11z47xim-{0}-dyjx89twm7-dyjx89twm7.gz
 E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\ht2wgt70cm-{0}-03hjc8e09r-03hjc8e09r.gz
 E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\kybcaolzch-{0}-48y08845bh-48y08845bh.gz
 E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\fj9gipfbbp-{0}-ilo7uva0vt-ilo7uva0vt.gz
@@ -591,3 +590,4 @@ E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.pdb
 E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.genruntimeconfig.cache
 E:\FootballManager\FootballManager\obj\Debug\net10.0\ref\FootballManager.dll
 E:\FootballManager\FootballManager\obj\Debug\net10.0\FootballManager.sourcelink.json
+E:\FootballManager\FootballManager\obj\Debug\net10.0\compressed\vg11z47xim-{0}-785dqvmjkq-785dqvmjkq.gz

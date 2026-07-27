@@ -4,79 +4,110 @@
     ViewData["Title"] = "Trận đấu";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4><i class="bi bi-calendar-event me-2 text-success"></i>Danh sách trận đấu</h4>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="page-title">
+        <i class="bi bi-calendar-event me-2 text-accent"></i>Trận đấu
+    </h4>
     @if (User.IsInRole("Admin") || User.IsInRole("Coach"))
     {
-        <a asp-action="Create" class="btn btn-success">
-            <i class="bi bi-plus-circle me-1"></i>Lên lịch trận mới
+        <a asp-action="Create" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-lg me-1"></i>Lên lịch trận mới
         </a>
     }
 </div>
 
 @if (!Model.Any())
 {
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-calendar-x fs-1"></i>
-        <p class="mt-2">Chưa có trận đấu nào được lên lịch</p>
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <i class="bi bi-calendar-x fs-1 d-block mb-3" style="opacity:0.2;color:var(--fm-accent)"></i>
+            <p class="text-muted">Chưa có trận đấu nào được lên lịch</p>
+        </div>
     </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-success">
-                <tr>
-                    <th>Đội nhà</th>
-                    <th class="text-center">Kết quả</th>
-                    <th>Đội khách</th>
-                    <th>Ngày thi đấu</th>
-                    <th>Địa điểm</th>
-                    <th class="text-center">Trạng thái</th>
-                    <th class="text-end">Chi tiết</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var m in Model)
-                {
-                    var badge = m.Status switch
-                    {
-                        MatchStatus.Scheduled => "bg-primary",
-                        MatchStatus.Completed => "bg-success",
-                        MatchStatus.Cancelled => "bg-secondary",
-                        _ => "bg-secondary"
-                    };
-                    var label = m.Status switch
-                    {
-                        MatchStatus.Scheduled => "Sắp diễn ra",
-                        MatchStatus.Completed => "Đã kết thúc",
-                        MatchStatus.Cancelled => "Đã hủy",
-                        _ => ""
-                    };
-                    <tr>
-                        <td class="fw-semibold">@m.HomeTeamName</td>
-                        <td class="text-center">
-                            @if (m.Status == MatchStatus.Completed)
-                            {
-                                <span class="fw-bold fs-5">@m.HomeScore - @m.AwayScore</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">vs</span>
-                            }
-                        </td>
-                        <td class="fw-semibold">@m.AwayTeamName</td>
-                        <td>@m.MatchDate.ToString("dd/MM/yyyy HH:mm")</td>
-                        <td>@(m.Venue ?? "-")</td>
-                        <td class="text-center"><span class="badge @badge">@label</span></td>
-                        <td class="text-end">
-                            <a asp-action="Details" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
+    @* Nhóm theo trạng thái *@
+    var groups = Model.GroupBy(m => m.Status).OrderBy(g => g.Key == MatchStatus.Scheduled ? 0 : g.Key == MatchStatus.Completed ? 1 : 2);
+
+    foreach (var grp in groups)
+    {
+        string headerColor = grp.Key switch
+        {
+            MatchStatus.Scheduled => "var(--fm-info)",
+            MatchStatus.Completed => "var(--fm-accent)",
+            MatchStatus.Cancelled => "var(--fm-text-muted)",
+            _ => "var(--fm-text-muted)"
+        };
+        string groupLabel = grp.Key switch
+        {
+            MatchStatus.Scheduled => "Sắp diễn ra",
+            MatchStatus.Completed => "Đã kết thúc",
+            MatchStatus.Cancelled => "Đã hủy",
+            _ => ""
+        };
+
+        <div class="mb-4">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <div style="width:3px;height:20px;background:@headerColor;border-radius:2px"></div>
+                <span class="fw-semibold" style="color:@headerColor">@groupLabel</span>
+                <span class="text-muted small">(@grp.Count() trận)</span>
+            </div>
+
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Đội nhà</th>
+                                    <th class="text-center" style="width:100px">Kết quả</th>
+                                    <th>Đội khách</th>
+                                    <th><i class="bi bi-clock me-1"></i>Thời gian</th>
+                                    <th><i class="bi bi-geo-alt me-1"></i>Địa điểm</th>
+                                    <th style="width:50px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in grp.OrderByDescending(x => x.MatchDate))
+                                {
+                                    <tr>
+                                        <td class="fw-semibold">@m.HomeTeamName</td>
+                                        <td class="text-center">
+                                            @if (m.Status == MatchStatus.Completed)
+                                            {
+                                                <span class="fw-bold fs-5" style="color:var(--fm-accent)">
+                                                    @m.HomeScore–@m.AwayScore
+                                                </span>
+                                            }
+                                            else if (m.Status == MatchStatus.Scheduled)
+                                            {
+                                                <span class="badge bg-info" style="font-size:0.72rem">vs</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">Đã hủy</span>
+                                            }
+                                        </td>
+                                        <td class="fw-semibold">@m.AwayTeamName</td>
+                                        <td class="small">
+                                            <div class="fw-semibold" style="color:var(--fm-gold)">@m.MatchDate.ToString("HH:mm")</div>
+                                            <div class="text-muted">@m.MatchDate.ToString("dd/MM/yyyy")</div>
+                                        </td>
+                                        <td class="small text-muted">@(m.Venue ?? "—")</td>
+                                        <td>
+                                            <a asp-action="Details" asp-route-id="@m.Id"
+                                               class="btn btn-xs btn-outline-info py-0 px-2">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 }

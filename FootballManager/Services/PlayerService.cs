@@ -23,13 +23,15 @@ namespace FootballManager.Services
                 .ThenBy(p => p.FullName)
                 .Select(p => new PlayerListItemViewModel
                 {
-                    Id = p.Id,
-                    FullName = p.FullName,
+                    Id           = p.Id,
+                    FullName     = p.FullName,
                     JerseyNumber = p.JerseyNumber,
-                    Position = p.Position,
-                    IsActive = p.IsActive,
-                    TeamId = p.TeamId,
-                    TeamName = p.Team.Name
+                    Position     = p.Position,
+                    IsActive     = p.IsActive,
+                    PhotoUrl     = p.PhotoUrl,
+                    TeamId       = p.TeamId,
+                    TeamName     = p.Team.Name,
+                    HealthStatus = p.HealthStatus
                 })
                 .ToListAsync();
         }
@@ -44,19 +46,20 @@ namespace FootballManager.Services
 
             return new PlayerDetailsViewModel
             {
-                Id = p.Id,
-                FullName = p.FullName,
-                JerseyNumber = p.JerseyNumber,
-                Position = p.Position,
-                DateOfBirth = p.DateOfBirth,
-                Nationality = p.Nationality,
-                Notes = p.Notes,
-                IsActive = p.IsActive,
-                HealthStatus = p.HealthStatus,
-                HealthNote = p.HealthNote,
+                Id                 = p.Id,
+                FullName           = p.FullName,
+                JerseyNumber       = p.JerseyNumber,
+                Position           = p.Position,
+                DateOfBirth        = p.DateOfBirth,
+                Nationality        = p.Nationality,
+                Notes              = p.Notes,
+                IsActive           = p.IsActive,
+                PhotoUrl           = p.PhotoUrl,
+                HealthStatus       = p.HealthStatus,
+                HealthNote         = p.HealthNote,
                 ExpectedReturnDate = p.ExpectedReturnDate,
-                TeamId = p.TeamId,
-                TeamName = p.Team.Name
+                TeamId             = p.TeamId,
+                TeamName           = p.Team.Name
             };
         }
 
@@ -78,14 +81,15 @@ namespace FootballManager.Services
 
             _db.Players.Add(new Player
             {
-                FullName = model.FullName,
+                FullName     = model.FullName,
                 JerseyNumber = model.JerseyNumber,
-                Position = model.Position,
-                DateOfBirth = model.DateOfBirth,
-                Nationality = model.Nationality,
-                Notes = model.Notes,
-                IsActive = model.IsActive,
-                TeamId = model.TeamId
+                Position     = model.Position,
+                DateOfBirth  = model.DateOfBirth,
+                Nationality  = model.Nationality,
+                Notes        = model.Notes,
+                IsActive     = model.IsActive,
+                PhotoUrl     = model.PhotoUrl,
+                TeamId       = model.TeamId
             });
 
             await _db.SaveChangesAsync();
@@ -107,16 +111,17 @@ namespace FootballManager.Services
                     return (false, $"Số áo {model.JerseyNumber} đã được dùng trong đội này");
             }
 
-            player.FullName = model.FullName;
-            player.JerseyNumber = model.JerseyNumber;
-            player.Position = model.Position;
-            player.DateOfBirth = model.DateOfBirth;
-            player.Nationality = model.Nationality;
-            player.Notes = model.Notes;
-            player.IsActive = model.IsActive;
-            player.HealthStatus = model.HealthStatus;
-            player.HealthNote = model.HealthNote;
+            player.FullName           = model.FullName;
+            player.JerseyNumber       = model.JerseyNumber;
+            player.Position           = model.Position;
+            player.DateOfBirth        = model.DateOfBirth;
+            player.Nationality        = model.Nationality;
+            player.Notes              = model.Notes;
+            player.IsActive           = model.IsActive;
+            player.HealthStatus       = model.HealthStatus;
+            player.HealthNote         = model.HealthNote;
             player.ExpectedReturnDate = model.ExpectedReturnDate;
+            if (model.PhotoUrl != null) player.PhotoUrl = model.PhotoUrl;
 
             await _db.SaveChangesAsync();
             return (true, null);
@@ -218,6 +223,41 @@ namespace FootballManager.Services
         public async Task<TeamTactics?> GetTacticsAsync(int teamId)
         {
             return await _db.TeamTactics.FirstOrDefaultAsync(t => t.TeamId == teamId);
+        }
+
+        public async Task<string?> SavePlayerPhotoAsync(int playerId, IFormFile photo, string webRootPath)
+        {
+            if (photo == null || photo.Length == 0) return null;
+
+            // Chỉ cho phép jpg, png, webp
+            var ext = Path.GetExtension(photo.FileName).ToLower();
+            if (!new[] { ".jpg", ".jpeg", ".png", ".webp" }.Contains(ext))
+                return null;
+
+            // Tạo thư mục nếu chưa có
+            var uploadDir = Path.Combine(webRootPath, "images", "players");
+            Directory.CreateDirectory(uploadDir);
+
+            // Tên file = playerId + ext (ghi đè ảnh cũ)
+            var fileName = $"player_{playerId}{ext}";
+            var filePath = Path.Combine(uploadDir, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await photo.CopyToAsync(stream);
+            }
+
+            var photoUrl = $"/images/players/{fileName}";
+
+            // Lưu URL vào DB
+            var player = await _db.Players.FindAsync(playerId);
+            if (player != null)
+            {
+                player.PhotoUrl = photoUrl;
+                await _db.SaveChangesAsync();
+            }
+
+            return photoUrl;
         }
     }
 }

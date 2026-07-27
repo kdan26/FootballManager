@@ -45,6 +45,10 @@ namespace FootballManager.Models
 
         public bool IsActive { get; set; } = true;
 
+        // Ảnh đại diện cầu thủ
+        [MaxLength(500)]
+        public string? PhotoUrl { get; set; }
+
         // Trạng thái sức khỏe
         public PlayerHealthStatus HealthStatus { get; set; } = PlayerHealthStatus.Fit;
 

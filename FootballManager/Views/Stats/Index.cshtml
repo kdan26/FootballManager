@@ -1,35 +1,30 @@
 @model FootballManager.ViewModels.PlayerStatsViewModel
 @{
-    ViewData["Title"] = "Thống kê cầu thủ";
+    ViewData["Title"] = "Thống kê";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h4><i class="bi bi-bar-chart-fill me-2 text-success"></i>Thống kê cầu thủ</h4>
-    <form method="get" class="d-flex gap-2">
-        <select name="team" class="form-select form-select-sm" style="width:200px"
-                onchange="this.form.submit()">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="page-title">
+        <i class="bi bi-bar-chart-fill me-2 text-accent"></i>Thống kê cầu thủ
+    </h4>
+    <form method="get">
+        <select name="team" class="form-select form-select-sm" style="width:200px" onchange="this.form.submit()">
             <option value="">-- Tất cả đội --</option>
             @foreach (var t in Model.Teams)
             {
-                if (Model.TeamFilter == t)
-                {
-                    <option value="@t" selected="selected">@t</option>
-                }
-                else
-                {
-                    <option value="@t">@t</option>
-                }
+                <option value="@t" selected="@(Model.TeamFilter == t ? "selected" : null)">@t</option>
             }
         </select>
     </form>
 </div>
 
 <div class="row g-4">
+
     @* Vua phá lưới *@
     <div class="col-lg-6">
         <div class="card h-100">
-            <div class="card-header bg-success text-white">
-                <i class="bi bi-trophy-fill me-2"></i>Vua phá lưới
+            <div class="card-header" style="border-left:3px solid var(--fm-gold)">
+                <i class="bi bi-trophy-fill me-2" style="color:var(--fm-gold)"></i>Vua phá lưới
             </div>
             <div class="card-body p-0">
                 @if (!Model.TopScorers.Any())
@@ -38,50 +33,28 @@
                 }
                 else
                 {
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>#</th>
-                                <th>Cầu thủ</th>
-                                <th>Đội</th>
-                                <th class="text-center">⚽</th>
-                                <th class="text-center">Phạt đền</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < Model.TopScorers.Count; i++)
-                            {
-                                var p = Model.TopScorers[i];
-                                <tr>
-                                    <td>
-                                        @if (i == 0)
-                                        {
-                                            <span class="badge bg-warning text-dark">🥇</span>
-                                        }
-                                        else if (i == 1)
-                                        {
-                                            <span class="badge bg-secondary">🥈</span>
-                                        }
-                                        else if (i == 2)
-                                        {
-                                            <span class="badge bg-danger">🥉</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">@(i + 1)</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        <a asp-action="Player" asp-route-id="@p.PlayerId">@p.FullName</a>
-                                        <span class="text-muted small">#@p.JerseyNumber</span>
-                                    </td>
-                                    <td class="text-muted small">@p.TeamName</td>
-                                    <td class="text-center fw-bold">@p.Goals</td>
-                                    <td class="text-center">@p.Penalties</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <div class="list-group list-group-flush">
+                        @for (int i = 0; i < Model.TopScorers.Count; i++)
+                        {
+                            var p = Model.TopScorers[i];
+                            string medal = i == 0 ? "🥇" : i == 1 ? "🥈" : i == 2 ? "🥉" : $"{i+1}";
+                            <div class="list-group-item d-flex align-items-center gap-3 py-2">
+                                <span style="width:28px;text-align:center;font-size:1rem">@medal</span>
+                                <div class="flex-grow-1">
+                                    <a asp-action="Player" asp-route-id="@p.PlayerId"
+                                       class="fw-semibold text-decoration-none" style="color:var(--fm-text)">
+                                        @p.FullName
+                                    </a>
+                                    <span class="text-muted small ms-1">#@p.JerseyNumber</span>
+                                    <div class="text-muted small">@p.TeamName</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold fs-5" style="color:var(--fm-accent)">@p.Goals</div>
+                                    <div class="text-muted" style="font-size:0.7rem">bàn thắng</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                 }
             </div>
         </div>
@@ -90,8 +63,9 @@
     @* Thẻ phạt *@
     <div class="col-lg-6">
         <div class="card mb-3">
-            <div class="card-header bg-warning text-dark">
-                <i class="bi bi-square-fill me-2"></i>Thẻ vàng nhiều nhất
+            <div class="card-header" style="border-left:3px solid var(--fm-gold)">
+                <span style="color:var(--fm-gold)">🟨</span>
+                <span class="ms-2">Thẻ vàng nhiều nhất</span>
             </div>
             <div class="card-body p-0">
                 @if (!Model.MostYellowCards.Any())
@@ -100,32 +74,28 @@
                 }
                 else
                 {
-                    <table class="table table-hover mb-0 table-sm">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Cầu thủ</th>
-                                <th>Đội</th>
-                                <th class="text-center">🟨</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var p in Model.MostYellowCards)
-                            {
-                                <tr>
-                                    <td><a asp-action="Player" asp-route-id="@p.PlayerId">@p.FullName</a></td>
-                                    <td class="text-muted small">@p.TeamName</td>
-                                    <td class="text-center fw-bold">@p.YellowCards</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <div class="list-group list-group-flush">
+                        @foreach (var p in Model.MostYellowCards.Take(5))
+                        {
+                            <div class="list-group-item d-flex align-items-center gap-3 py-2">
+                                <div class="flex-grow-1">
+                                    <a asp-action="Player" asp-route-id="@p.PlayerId"
+                                       class="fw-semibold text-decoration-none" style="color:var(--fm-text)">
+                                        @p.FullName
+                                    </a>
+                                    <div class="text-muted small">@p.TeamName</div>
+                                </div>
+                                <div class="fw-bold" style="color:var(--fm-gold)">@p.YellowCards</div>
+                            </div>
+                        }
+                    </div>
                 }
             </div>
         </div>
-
         <div class="card">
-            <div class="card-header bg-danger text-white">
-                <i class="bi bi-square-fill me-2"></i>Thẻ đỏ nhiều nhất
+            <div class="card-header" style="border-left:3px solid var(--fm-danger)">
+                <span>🟥</span>
+                <span class="ms-2">Thẻ đỏ nhiều nhất</span>
             </div>
             <div class="card-body p-0">
                 @if (!Model.MostRedCards.Any())
@@ -134,25 +104,21 @@
                 }
                 else
                 {
-                    <table class="table table-hover mb-0 table-sm">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Cầu thủ</th>
-                                <th>Đội</th>
-                                <th class="text-center">🟥</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var p in Model.MostRedCards)
-                            {
-                                <tr>
-                                    <td><a asp-action="Player" asp-route-id="@p.PlayerId">@p.FullName</a></td>
-                                    <td class="text-muted small">@p.TeamName</td>
-                                    <td class="text-center fw-bold">@p.RedCards</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                    <div class="list-group list-group-flush">
+                        @foreach (var p in Model.MostRedCards.Take(5))
+                        {
+                            <div class="list-group-item d-flex align-items-center gap-3 py-2">
+                                <div class="flex-grow-1">
+                                    <a asp-action="Player" asp-route-id="@p.PlayerId"
+                                       class="fw-semibold text-decoration-none" style="color:var(--fm-text)">
+                                        @p.FullName
+                                    </a>
+                                    <div class="text-muted small">@p.TeamName</div>
+                                </div>
+                                <div class="fw-bold" style="color:var(--fm-danger)">@p.RedCards</div>
+                            </div>
+                        }
+                    </div>
                 }
             </div>
         </div>
@@ -162,7 +128,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <i class="bi bi-table me-2"></i>Bảng thống kê tổng hợp
+                <i class="bi bi-table me-2 text-accent"></i>Bảng thống kê tổng hợp
             </div>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -172,37 +138,41 @@
                             <th>Đội</th>
                             <th>Vị trí</th>
                             <th class="text-center">Trận</th>
-                            <th class="text-center">⚽ Bàn</th>
+                            <th class="text-center" style="color:var(--fm-accent)">⚽ Bàn</th>
                             <th class="text-center">Phạt đền</th>
-                            <th class="text-center">Phản lưới</th>
-                            <th class="text-center">🟨</th>
-                            <th class="text-center">🟥</th>
+                            <th class="text-center" style="color:var(--fm-danger)">Phản lưới</th>
+                            <th class="text-center" style="color:var(--fm-gold)">🟨</th>
+                            <th class="text-center" style="color:var(--fm-danger)">🟥</th>
                         </tr>
                     </thead>
                     <tbody>
                         @if (!Model.AllStats.Any())
                         {
                             <tr>
-                                <td colspan="9" class="text-center text-muted py-3">Chưa có dữ liệu thống kê</td>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox d-block mb-2 fs-3" style="opacity:0.3"></i>
+                                    Chưa có dữ liệu thống kê
+                                </td>
                             </tr>
                         }
                         @foreach (var p in Model.AllStats)
                         {
                             <tr>
                                 <td>
-                                    <a asp-action="Player" asp-route-id="@p.PlayerId" class="fw-semibold">
+                                    <a asp-action="Player" asp-route-id="@p.PlayerId"
+                                       class="fw-semibold text-decoration-none" style="color:var(--fm-text)">
                                         @p.FullName
                                     </a>
-                                    <span class="text-muted small">#@p.JerseyNumber</span>
+                                    <span class="text-muted small ms-1">#@p.JerseyNumber</span>
                                 </td>
                                 <td class="text-muted small">@p.TeamName</td>
                                 <td class="text-muted small">@p.PositionLabel</td>
                                 <td class="text-center">@p.MatchesPlayed</td>
-                                <td class="text-center fw-bold text-success">@p.Goals</td>
-                                <td class="text-center">@p.Penalties</td>
-                                <td class="text-center text-danger">@p.OwnGoals</td>
-                                <td class="text-center">@p.YellowCards</td>
-                                <td class="text-center">@p.RedCards</td>
+                                <td class="text-center fw-bold" style="color:var(--fm-accent)">@p.Goals</td>
+                                <td class="text-center text-muted">@p.Penalties</td>
+                                <td class="text-center" style="color:var(--fm-danger)">@(p.OwnGoals > 0 ? p.OwnGoals.ToString() : "—")</td>
+                                <td class="text-center" style="color:var(--fm-gold)">@(p.YellowCards > 0 ? p.YellowCards.ToString() : "—")</td>
+                                <td class="text-center" style="color:var(--fm-danger)">@(p.RedCards > 0 ? p.RedCards.ToString() : "—")</td>
                             </tr>
                         }
                     </tbody>

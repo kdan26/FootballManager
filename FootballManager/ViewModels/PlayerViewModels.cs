@@ -11,6 +11,7 @@ namespace FootballManager.ViewModels
         public PlayerPosition Position { get; set; }
         public string PositionLabel => ViewModelHelpers.GetPositionLabel(Position);
         public PlayerHealthStatus HealthStatus { get; set; } = PlayerHealthStatus.Fit;
+        public string? PhotoUrl { get; set; }
         public bool IsActive { get; set; }
         public int TeamId { get; set; }
         public string TeamName { get; set; } = string.Empty;
@@ -43,6 +44,10 @@ namespace FootballManager.ViewModels
 
         [Display(Name = "Đang hoạt động")]
         public bool IsActive { get; set; } = true;
+
+        [MaxLength(500)]
+        [Display(Name = "Ảnh đại diện (URL hoặc upload)")]
+        public string? PhotoUrl { get; set; }
 
         [Required]
         public int TeamId { get; set; }
@@ -78,6 +83,7 @@ namespace FootballManager.ViewModels
         public string? Nationality { get; set; }
         public string? Notes { get; set; }
         public bool IsActive { get; set; }
+        public string? PhotoUrl { get; set; }
         public int TeamId { get; set; }
         public string TeamName { get; set; } = string.Empty;
         public int? Age => DateOfBirth.HasValue

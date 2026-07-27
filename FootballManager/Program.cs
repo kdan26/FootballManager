@@ -43,6 +43,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Serve wwwroot bao gồm file upload runtime
 app.UseRouting();
 
 app.UseAuthentication();
@@ -55,11 +56,11 @@ app.MapControllerRoute(
     pattern: "{controller=Auth}/{action=Login}/{id?}")
     .WithStaticAssets();
 
-// Seed dữ liệu ban đầu
+// Tự động apply migrations + seed khi khởi động
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate(); // Tạo DB + apply tất cả migrations tự động
     FootballManager.Data.SeedData.Initialize(db);
 }
 
